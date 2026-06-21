@@ -1,3 +1,81 @@
+import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { login } from '../api/auth';
+import { useAuthStore } from '../store/authStore';
+import { Campo } from '../components/Campo';
+
 export function Login() {
-  return <div className="p-8">Login — em construção</div>;
+  const navigate = useNavigate();
+  const setToken = useAuthStore((state) => state.setToken);
+
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  async function entrar(e: FormEvent) {
+    e.preventDefault();
+    setEnviando(true);
+    setErro(null);
+    try {
+      const { token } = await login({ email, senha });
+      setToken(token);
+      navigate('/admin');
+    } catch {
+      setErro('Email ou senha inválidos.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-fundo px-4">
+      <form
+        onSubmit={entrar}
+        className="w-full max-w-sm space-y-5 rounded-2xl bg-superficie p-8 shadow-sm"
+      >
+        <div className="text-center">
+          <h1 className="font-display text-2xl tracking-wide text-tinta">Entrar</h1>
+          <p className="mt-1 text-sm text-tinta-suave">Painel da sua loja no Cardápio Site</p>
+        </div>
+
+        <Campo label="Email">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+          />
+        </Campo>
+
+        <Campo label="Senha">
+          <input
+            type="password"
+            required
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+          />
+        </Campo>
+
+        {erro && <p className="text-sm text-acento">{erro}</p>}
+
+        <button
+          type="submit"
+          disabled={enviando}
+          className="w-full rounded-full bg-acento py-3 font-semibold text-superficie transition disabled:opacity-60"
+        >
+          {enviando ? 'Entrando...' : 'Entrar'}
+        </button>
+
+        <p className="text-center text-sm text-tinta-suave">
+          Ainda não tem loja?{' '}
+          <Link to="/cadastro" className="font-medium text-acento">
+            Cadastra aqui
+          </Link>
+        </p>
+      </form>
+    </div>
+  );
 }

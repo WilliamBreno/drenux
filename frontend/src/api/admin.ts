@@ -65,6 +65,7 @@ export async function buscarLoja(): Promise<Loja> {
 export interface ConfiguracoesInput {
   whatsapp_numero: string;
   permite_mesmo_dia: boolean;
+  logo_url: string;
 }
 
 export async function atualizarConfiguracoes(input: ConfiguracoesInput): Promise<void> {

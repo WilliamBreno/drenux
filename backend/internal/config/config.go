@@ -10,9 +10,12 @@ import (
 // Config centraliza a leitura de variáveis de ambiente. Em vez de
 // espalhar os.Getenv pelo código, todo mundo pede uma *Config.
 type Config struct {
-	Port          string
-	DatabaseURL   string
-	AdminWhatsapp string
+	Port                string
+	DatabaseURL         string
+	JWTSecret           string
+	StripeSecretKey     string
+	StripeWebhookSecret string
+	FrontendURL         string
 }
 
 func Load() *Config {
@@ -24,13 +27,31 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
-		Port:          getEnv("PORT", "8080"),
-		DatabaseURL:   getEnv("DATABASE_URL", ""),
-		AdminWhatsapp: getEnv("ADMIN_WHATSAPP", ""),
+		Port:                getEnv("PORT", "8080"),
+		DatabaseURL:         getEnv("DATABASE_URL", ""),
+		JWTSecret:           getEnv("JWT_SECRET", ""),
+		StripeSecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
+		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		// Padrão já bate com a porta do Vite em desenvolvimento — quando
+		// fizer o deploy do frontend (Vercel), define essa variável com
+		// a URL real em produção.
+		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:5173"),
 	}
 
 	if cfg.DatabaseURL == "" {
 		log.Println("aviso: DATABASE_URL não definida (vamos precisar dela já na próxima etapa)")
+	}
+
+	if cfg.JWTSecret == "" {
+		log.Println("aviso: JWT_SECRET não definida — qualquer um conseguiria forjar token. Defina antes de qualquer deploy real.")
+	}
+
+	if cfg.StripeSecretKey == "" {
+		log.Println("aviso: STRIPE_SECRET_KEY não definida — endpoints de Stripe vão falhar")
+	}
+
+	if cfg.StripeWebhookSecret == "" {
+		log.Println("aviso: STRIPE_WEBHOOK_SECRET não definida — o webhook vai rejeitar todos os eventos")
 	}
 
 	return cfg

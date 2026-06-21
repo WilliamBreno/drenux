@@ -15,3 +15,19 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Se o token expirou ou foi invalidado, o backend devolve 401 — desloga
+// automaticamente em vez de deixar o painel preso em chamadas que nunca
+// vão funcionar.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout();
+      if (window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);

@@ -30,13 +30,14 @@ export interface Loja {
   nome: string;
   slug: string;
   whatsapp_numero: string;
+  logo_url: string;
   permite_mesmo_dia: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface CardapioPublico {
-  loja: { nome: string; slug: string };
+  loja: { nome: string; slug: string; permite_mesmo_dia: boolean; logo_url: string };
   categorias: Categoria[];
   produtos: Produto[];
 }

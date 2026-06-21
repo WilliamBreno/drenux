@@ -1,15 +1,68 @@
-import { Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { buscarLoja } from '../../api/admin';
+import { useAuthStore } from '../../store/authStore';
 
-// Layout do painel administrativo. A navegação lateral de verdade entra
-// numa etapa futura — por enquanto só garante que as sub-rotas
-// (produtos, categorias, pedidos, configurações) renderizam dentro dele.
+const links = [
+  { to: '/admin/pedidos', label: 'Pedidos' },
+  { to: '/admin/produtos', label: 'Produtos' },
+  { to: '/admin/categorias', label: 'Categorias' },
+  { to: '/admin/configuracoes', label: 'Configurações' },
+];
+
 export function Dashboard() {
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
+
+  const { data: loja } = useQuery({ queryKey: ['loja'], queryFn: buscarLoja });
+
+  function sair() {
+    logout();
+    navigate('/login');
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-white px-6 py-4">
-        <span className="font-semibold">Painel admin</span>
+    <div className="min-h-screen bg-fundo">
+      <header className="flex items-center justify-between border-b border-tinta/10 bg-superficie px-6 py-4">
+        <div>
+          <p className="font-display text-lg tracking-wide text-tinta">
+            {loja?.nome ?? 'Sua loja'}
+          </p>
+          {loja && (
+            <a
+              href={`/${loja.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-acento hover:underline"
+            >
+              Ver cardápio público ↗
+            </a>
+          )}
+        </div>
+        <button onClick={sair} className="text-sm font-medium text-tinta-suave hover:text-acento">
+          Sair
+        </button>
       </header>
-      <main>
+
+      <nav className="flex gap-1 overflow-x-auto border-b border-tinta/10 bg-superficie px-6">
+        {links.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            className={({ isActive }) =>
+              `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition ${
+                isActive
+                  ? 'border-acento text-acento'
+                  : 'border-transparent text-tinta-suave hover:text-tinta'
+              }`
+            }
+          >
+            {link.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <main className="mx-auto max-w-3xl px-6 py-6">
         <Outlet />
       </main>
     </div>

@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cardapio
+      POSTGRES_PASSWORD: cardapio
+      POSTGRES_DB: cardapio
+    ports:
+      - "5433:5432"
+    volumes:
+      - cardapio_db_data:/var/lib/postgresql/data
+
+volumes:
+  cardapio_db_data:
