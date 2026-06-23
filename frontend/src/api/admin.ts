@@ -29,6 +29,8 @@ export interface ProdutoInput {
   foto_url: string;
   disponivel: boolean;
   categoria_id: number;
+  estoque_atual: number | null;
+  estoque_alerta: number | null;
 }
 
 export async function listarProdutos(): Promise<Produto[]> {
@@ -64,12 +66,47 @@ export async function buscarLoja(): Promise<Loja> {
 
 export interface ConfiguracoesInput {
   whatsapp_numero: string;
-  permite_mesmo_dia: boolean;
   logo_url: string;
+  modo_pedido: string;
+  antecedencia_minima_horas: number;
+  horario_abertura: string;
+  horario_fechamento: string;
+  margem_fechamento_minutos: number;
+  pausado: boolean;
+  mensagem_pausa: string;
 }
 
 export async function atualizarConfiguracoes(input: ConfiguracoesInput): Promise<void> {
   await api.put('/admin/loja', input);
+}
+
+// Variações
+export interface VariacaoInput {
+  nome: string;
+  preco_adicional: number;
+  disponivel: boolean;
+  estoque_atual: number | null;
+  estoque_alerta: number | null;
+  ordem: number;
+}
+
+export async function listarVariacoes(produtoId: number): Promise<import('./types').VariacaoProduto[]> {
+  const { data } = await api.get(`/admin/produtos/${produtoId}/variacoes`);
+  return data;
+}
+
+export async function criarVariacao(produtoId: number, input: VariacaoInput): Promise<import('./types').VariacaoProduto> {
+  const { data } = await api.post(`/admin/produtos/${produtoId}/variacoes`, input);
+  return data;
+}
+
+export async function atualizarVariacao(produtoId: number, variacaoId: number, input: VariacaoInput): Promise<import('./types').VariacaoProduto> {
+  const { data } = await api.put(`/admin/produtos/${produtoId}/variacoes/${variacaoId}`, input);
+  return data;
+}
+
+export async function deletarVariacao(produtoId: number, variacaoId: number): Promise<void> {
+  await api.delete(`/admin/produtos/${produtoId}/variacoes/${variacaoId}`);
 }
 
 // Stripe

@@ -18,6 +18,6 @@ func (s *LojaService) Buscar(lojaID uint) (*domain.Loja, error) {
 	return s.lojaRepo.BuscarPorID(lojaID)
 }
 
-func (s *LojaService) AtualizarConfiguracoes(lojaID uint, whatsappNumero string, permiteMesmoDia bool, logoURL string) error {
-	return s.lojaRepo.AtualizarConfiguracoes(lojaID, whatsappNumero, permiteMesmoDia, logoURL)
+func (s *LojaService) AtualizarConfiguracoes(lojaID uint, cfg repository.ConfiguracoesLoja) error {
+	return s.lojaRepo.AtualizarConfiguracoes(lojaID, cfg)
 }

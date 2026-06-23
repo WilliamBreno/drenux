@@ -17,12 +17,12 @@ func (r *ProdutoRepository) Criar(produto *domain.Produto) error {
 	return r.db.Create(produto).Error
 }
 
-// BuscarPorID já vem com a Categoria carregada junto (Preload), pra toda
-// resposta de criar/atualizar devolver o produto completo, não só o ID
-// da categoria.
+// BuscarPorID já vem com a Categoria e as Variacoes carregadas.
 func (r *ProdutoRepository) BuscarPorID(id uint) (*domain.Produto, error) {
 	var produto domain.Produto
-	if err := r.db.Preload("Categoria").First(&produto, id).Error; err != nil {
+	if err := r.db.Preload("Categoria").Preload("Variacoes", func(db *gorm.DB) *gorm.DB {
+		return db.Order("ordem, id")
+	}).First(&produto, id).Error; err != nil {
 		return nil, err
 	}
 	return &produto, nil
@@ -46,16 +46,59 @@ func (r *ProdutoRepository) ContarPorCategoria(categoriaID uint) (int64, error) 
 	return total, nil
 }
 
-// ListarPorLoja devolve os produtos de uma loja, com a categoria de cada
-// um já carregada junto (Preload evita ficar fazendo uma query por
-// produto pra saber o nome da categoria).
+// SubtrairEstoque decrementa o estoque de um produto após pagamento
+// confirmado. Usa UPDATE atômico (não lê + escreve separado) pra evitar
+// race condition se dois pagamentos chegarem ao mesmo tempo.
+// Devolve o estoque restante após a subtração, pra decidir se precisa
+// disparar alerta ou marcar como esgotado.
+func (r *ProdutoRepository) SubtrairEstoque(produtoID uint, quantidade int) (estoqueRestante int, err error) {
+	result := r.db.Model(&domain.Produto{}).
+		Where("id = ? AND estoque_atual IS NOT NULL", produtoID).
+		UpdateColumn("estoque_atual", gorm.Expr("GREATEST(estoque_atual - ?, 0)", quantidade))
+	if result.Error != nil {
+		return 0, result.Error
+	}
+
+	// Busca o valor atual pra decidir o que fazer a seguir
+	var produto domain.Produto
+	if err := r.db.Select("estoque_atual, estoque_alerta").First(&produto, produtoID).Error; err != nil {
+		return 0, err
+	}
+	if produto.EstoqueAtual == nil {
+		return -1, nil // sem controle de estoque, ignora
+	}
+
+	// Se zerou, marca como indisponível
+	if *produto.EstoqueAtual == 0 {
+		r.db.Model(&domain.Produto{}).Where("id = ?", produtoID).Update("disponivel", false)
+	}
+
+	return *produto.EstoqueAtual, nil
+}
+
+// BuscarEstoqueAlerta retorna o produto se ele tiver estoque_alerta
+// configurado e o estoque atual tiver atingido ou passado esse limite.
+func (r *ProdutoRepository) BuscarEstoqueAlerta(produtoID uint) (*domain.Produto, bool) {
+	var produto domain.Produto
+	if err := r.db.First(&produto, produtoID).Error; err != nil {
+		return nil, false
+	}
+	if produto.EstoqueAtual == nil || produto.EstoqueAlerta == nil {
+		return nil, false
+	}
+	return &produto, *produto.EstoqueAtual <= *produto.EstoqueAlerta
+}
 //
 // apenasDisponiveis controla se produtos marcados como indisponíveis
 // entram na lista — true pro cardápio público (cliente não deve ver item
 // fora de estoque), false pro painel admin (o dono precisa ver tudo,
 // inclusive o que está pausado, pra poder reativar).
 func (r *ProdutoRepository) ListarPorLoja(lojaID uint, apenasDisponiveis bool) ([]domain.Produto, error) {
-	query := r.db.Where("loja_id = ?", lojaID).Preload("Categoria")
+	query := r.db.Where("loja_id = ?", lojaID).
+		Preload("Categoria").
+		Preload("Variacoes", func(db *gorm.DB) *gorm.DB {
+			return db.Order("ordem, id")
+		})
 	if apenasDisponiveis {
 		query = query.Where("disponivel = ?", true)
 	}

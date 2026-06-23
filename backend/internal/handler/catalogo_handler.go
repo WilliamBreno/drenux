@@ -28,10 +28,16 @@ func (h *CatalogoHandler) BuscarCardapio(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"loja": gin.H{
-			"nome":              cardapio.Loja.Nome,
-			"slug":              cardapio.Loja.Slug,
-			"permite_mesmo_dia": cardapio.Loja.PermiteMesmoDia,
-			"logo_url":          cardapio.Loja.LogoURL,
+			"nome":                      cardapio.Loja.Nome,
+			"slug":                      cardapio.Loja.Slug,
+			"logo_url":                  cardapio.Loja.LogoURL,
+			"modo_pedido":               cardapio.Loja.ModoPedido,
+			"antecedencia_minima_horas": cardapio.Loja.AntecedenciaMinimaHoras,
+			"horario_abertura":          cardapio.Loja.HorarioAbertura,
+			"horario_fechamento":        cardapio.Loja.HorarioFechamento,
+			"margem_fechamento_minutos": cardapio.Loja.MargemFechamentoMinutos,
+			"pausado":                   cardapio.Loja.Pausado,
+			"mensagem_pausa":            cardapio.Loja.MensagemPausa,
 		},
 		"categorias": cardapio.Categorias,
 		"produtos":   cardapio.Produtos,

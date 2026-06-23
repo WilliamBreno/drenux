@@ -10,6 +10,17 @@ export interface Categoria {
   updated_at: string;
 }
 
+export interface VariacaoProduto {
+  id: number;
+  produto_id: number;
+  nome: string;
+  preco_adicional: number;
+  disponivel: boolean;
+  estoque_atual: number | null;
+  estoque_alerta: number | null;
+  ordem: number;
+}
+
 export interface Produto {
   id: number;
   loja_id: number;
@@ -20,6 +31,9 @@ export interface Produto {
   preco: number;
   foto_url: string;
   disponivel: boolean;
+  estoque_atual: number | null;
+  estoque_alerta: number | null;
+  variacoes?: VariacaoProduto[];
   created_at: string;
   updated_at: string;
 }
@@ -31,13 +45,30 @@ export interface Loja {
   slug: string;
   whatsapp_numero: string;
   logo_url: string;
-  permite_mesmo_dia: boolean;
+  modo_pedido: 'imediato' | 'agendado';
+  antecedencia_minima_horas: number;
+  horario_abertura: string;
+  horario_fechamento: string;
+  margem_fechamento_minutos: number;
+  pausado: boolean;
+  mensagem_pausa: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface CardapioPublico {
-  loja: { nome: string; slug: string; permite_mesmo_dia: boolean; logo_url: string };
+  loja: {
+    nome: string;
+    slug: string;
+    logo_url: string;
+    modo_pedido: 'imediato' | 'agendado';
+    antecedencia_minima_horas: number;
+    horario_abertura: string;
+    horario_fechamento: string;
+    margem_fechamento_minutos: number;
+    pausado: boolean;
+    mensagem_pausa: string;
+  };
   categorias: Categoria[];
   produtos: Produto[];
 }
@@ -67,8 +98,9 @@ export interface Pedido {
 }
 
 // Carrinho — estado só do front, nunca enviado direto pra API. Na hora
-// de criar o pedido, viram { produto_id, quantidade } no payload.
+// de criar o pedido, viram { produto_id, variacao_id, quantidade } no payload.
 export interface ItemCarrinho {
   produto: Produto;
+  variacao?: VariacaoProduto; // undefined = produto sem variação
   quantidade: number;
 }

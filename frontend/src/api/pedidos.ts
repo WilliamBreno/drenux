@@ -3,6 +3,7 @@ import type { Pedido } from './types';
 
 interface ItemPedidoInput {
   produto_id: number;
+  variacao_id?: number;
   quantidade: number;
 }
 

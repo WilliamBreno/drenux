@@ -1,11 +1,16 @@
 import { create } from 'zustand';
-import type { ItemCarrinho, Produto } from '../api/types';
+import type { ItemCarrinho, Produto, VariacaoProduto } from '../api/types';
+
+// Chave única do item = produto_id + variacao_id (ou só produto_id se sem variação)
+function chaveItem(produtoId: number, variacaoId?: number): string {
+  return variacaoId ? `${produtoId}-${variacaoId}` : `${produtoId}`;
+}
 
 interface CartState {
   itens: ItemCarrinho[];
-  adicionar: (produto: Produto) => void;
-  remover: (produtoId: number) => void;
-  alterarQuantidade: (produtoId: number, quantidade: number) => void;
+  adicionar: (produto: Produto, variacao?: VariacaoProduto) => void;
+  remover: (produtoId: number, variacaoId?: number) => void;
+  alterarQuantidade: (produtoId: number, quantidade: number, variacaoId?: number) => void;
   limpar: () => void;
   total: () => number;
 }
@@ -13,37 +18,55 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
   itens: [],
 
-  adicionar: (produto) => {
+  adicionar: (produto, variacao) => {
     set((state) => {
-      const existente = state.itens.find((item) => item.produto.id === produto.id);
+      const chave = chaveItem(produto.id, variacao?.id);
+      const existente = state.itens.find(
+        (item) => chaveItem(item.produto.id, item.variacao?.id) === chave
+      );
       if (existente) {
         return {
           itens: state.itens.map((item) =>
-            item.produto.id === produto.id ? { ...item, quantidade: item.quantidade + 1 } : item
+            chaveItem(item.produto.id, item.variacao?.id) === chave
+              ? { ...item, quantidade: item.quantidade + 1 }
+              : item
           ),
         };
       }
-      return { itens: [...state.itens, { produto, quantidade: 1 }] };
+      return { itens: [...state.itens, { produto, variacao, quantidade: 1 }] };
     });
   },
 
-  remover: (produtoId) => {
-    set((state) => ({ itens: state.itens.filter((item) => item.produto.id !== produtoId) }));
+  remover: (produtoId, variacaoId) => {
+    const chave = chaveItem(produtoId, variacaoId);
+    set((state) => ({
+      itens: state.itens.filter(
+        (item) => chaveItem(item.produto.id, item.variacao?.id) !== chave
+      ),
+    }));
   },
 
-  alterarQuantidade: (produtoId, quantidade) => {
+  alterarQuantidade: (produtoId, quantidade, variacaoId) => {
+    const chave = chaveItem(produtoId, variacaoId);
     if (quantidade <= 0) {
-      get().remover(produtoId);
+      get().remover(produtoId, variacaoId);
       return;
     }
     set((state) => ({
       itens: state.itens.map((item) =>
-        item.produto.id === produtoId ? { ...item, quantidade } : item
+        chaveItem(item.produto.id, item.variacao?.id) === chave
+          ? { ...item, quantidade }
+          : item
       ),
     }));
   },
 
   limpar: () => set({ itens: [] }),
 
-  total: () => get().itens.reduce((soma, item) => soma + item.produto.preco * item.quantidade, 0),
+  total: () =>
+    get().itens.reduce(
+      (soma, item) =>
+        soma + (item.produto.preco + (item.variacao?.preco_adicional ?? 0)) * item.quantidade,
+      0
+    ),
 }));

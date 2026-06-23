@@ -10,12 +10,14 @@ import (
 )
 
 type ProdutoInput struct {
-	Nome        string
-	Descricao   string
-	Preco       float64
-	FotoURL     string
-	Disponivel  bool
-	CategoriaID uint
+	Nome          string
+	Descricao     string
+	Preco         float64
+	FotoURL       string
+	Disponivel    bool
+	CategoriaID   uint
+	EstoqueAtual  *int
+	EstoqueAlerta *int
 }
 
 type ProdutoService struct {
@@ -42,13 +44,15 @@ func (s *ProdutoService) Criar(lojaID uint, input ProdutoInput) (*domain.Produto
 	}
 
 	produto := domain.Produto{
-		LojaID:      lojaID,
-		CategoriaID: input.CategoriaID,
-		Nome:        input.Nome,
-		Descricao:   input.Descricao,
-		Preco:       input.Preco,
-		FotoURL:     input.FotoURL,
-		Disponivel:  input.Disponivel,
+		LojaID:        lojaID,
+		CategoriaID:   input.CategoriaID,
+		Nome:          input.Nome,
+		Descricao:     input.Descricao,
+		Preco:         input.Preco,
+		FotoURL:       input.FotoURL,
+		Disponivel:    input.Disponivel,
+		EstoqueAtual:  input.EstoqueAtual,
+		EstoqueAlerta: input.EstoqueAlerta,
 	}
 	if err := s.produtoRepo.Criar(&produto); err != nil {
 		return nil, fmt.Errorf("criando produto: %w", err)
@@ -75,6 +79,8 @@ func (s *ProdutoService) Atualizar(lojaID, produtoID uint, input ProdutoInput) (
 	produto.FotoURL = input.FotoURL
 	produto.Disponivel = input.Disponivel
 	produto.CategoriaID = input.CategoriaID
+	produto.EstoqueAtual = input.EstoqueAtual
+	produto.EstoqueAlerta = input.EstoqueAlerta
 
 	if err := s.produtoRepo.Atualizar(produto); err != nil {
 		return nil, fmt.Errorf("atualizando produto: %w", err)

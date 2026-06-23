@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useCartStore } from '../store/cartStore';
-import type { Produto } from '../api/types';
+import type { Produto, VariacaoProduto } from '../api/types';
 
 interface Props {
   produto: Produto;
@@ -7,6 +8,23 @@ interface Props {
 
 export function ProdutoCard({ produto }: Props) {
   const adicionar = useCartStore((state) => state.adicionar);
+  const variacoes = produto.variacoes?.filter((v) => v.disponivel) ?? [];
+  const temVariacoes = variacoes.length > 0;
+
+  const [variacaoSelecionada, setVariacaoSelecionada] = useState<VariacaoProduto | null>(
+    // Se só tem uma variação, já pré-seleciona
+    variacoes.length === 1 ? variacoes[0] : null
+  );
+
+  const precoFinal = produto.preco + (variacaoSelecionada?.preco_adicional ?? 0);
+  const podeAdicionar = !temVariacoes || variacaoSelecionada !== null;
+
+  function handleAdicionar() {
+    if (!podeAdicionar) return;
+    adicionar(produto, variacaoSelecionada ?? undefined);
+    // Reseta seleção só se tiver mais de uma variação
+    if (variacoes.length > 1) setVariacaoSelecionada(null);
+  }
 
   return (
     <div className="group flex gap-4 rounded-2xl bg-superficie p-4 shadow-[0_2px_0_0_rgba(43,33,24,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_rgba(43,33,24,0.08)]">
@@ -34,16 +52,41 @@ export function ProdutoCard({ produto }: Props) {
           )}
         </div>
 
+        {/* Seletor de variações */}
+        {temVariacoes && (
+          <div className="flex flex-wrap gap-1.5">
+            {variacoes.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setVariacaoSelecionada(variacaoSelecionada?.id === v.id ? null : v)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  variacaoSelecionada?.id === v.id
+                    ? 'border-acento bg-acento text-superficie'
+                    : 'border-tinta/20 text-tinta hover:border-acento/50'
+                }`}
+              >
+                {v.nome}
+                {v.preco_adicional > 0 && (
+                  <span className="ml-1 opacity-70">
+                    +R${v.preco_adicional.toFixed(2).replace('.', ',')}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-end justify-between gap-2">
           <span className="inline-flex items-center rounded-full border-2 border-acento px-3 py-0.5 font-carimbo text-sm font-semibold text-acento">
-            R$ {produto.preco.toFixed(2).replace('.', ',')}
+            R$ {precoFinal.toFixed(2).replace('.', ',')}
           </span>
 
           <button
-            onClick={() => adicionar(produto)}
-            className="rounded-full bg-acento px-4 py-1.5 text-sm font-semibold text-superficie transition active:scale-95 hover:bg-acento/90"
+            onClick={handleAdicionar}
+            disabled={!podeAdicionar}
+            className="rounded-full bg-acento px-4 py-1.5 text-sm font-semibold text-superficie transition active:scale-95 hover:bg-acento/90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Adicionar
+            {temVariacoes && !variacaoSelecionada ? 'Escolha uma opção' : 'Adicionar'}
           </button>
         </div>
       </div>

@@ -39,14 +39,31 @@ func (r *LojaRepository) AtualizarStripeAccountID(lojaID uint, stripeAccountID s
 	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Update("stripe_account_id", stripeAccountID).Error
 }
 
-// AtualizarConfiguracoes grava as configurações editáveis da loja: o
-// WhatsApp pra onde vão os avisos de pedido pago, se aceita pedido pro
-// mesmo dia, e a logo (link já hospedado no Cloudinary).
-func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, whatsappNumero string, permiteMesmoDia bool, logoURL string) error {
+// ConfiguracoesLoja agrupa todos os campos editáveis pelo dono no painel.
+type ConfiguracoesLoja struct {
+	WhatsappNumero           string
+	LogoURL                  string
+	ModoPedido               string
+	AntecedenciaMinimaHoras  int
+	HorarioAbertura          string
+	HorarioFechamento        string
+	MargemFechamentoMinutos  int
+	Pausado                  bool
+	MensagemPausa            string
+}
+
+// AtualizarConfiguracoes grava todos os campos editáveis da loja de uma vez.
+func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLoja) error {
 	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Updates(map[string]interface{}{
-		"whatsapp_numero":   whatsappNumero,
-		"permite_mesmo_dia": permiteMesmoDia,
-		"logo_url":          logoURL,
+		"whatsapp_numero":           cfg.WhatsappNumero,
+		"logo_url":                  cfg.LogoURL,
+		"modo_pedido":               cfg.ModoPedido,
+		"antecedencia_minima_horas": cfg.AntecedenciaMinimaHoras,
+		"horario_abertura":          cfg.HorarioAbertura,
+		"horario_fechamento":        cfg.HorarioFechamento,
+		"margem_fechamento_minutos": cfg.MargemFechamentoMinutos,
+		"pausado":                   cfg.Pausado,
+		"mensagem_pausa":            cfg.MensagemPausa,
 	}).Error
 }
 

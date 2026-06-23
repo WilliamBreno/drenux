@@ -27,12 +27,14 @@ func (h *ProdutoHandler) Listar(c *gin.Context) {
 }
 
 type produtoRequest struct {
-	Nome        string  `json:"nome" binding:"required"`
-	Descricao   string  `json:"descricao"`
-	Preco       float64 `json:"preco" binding:"required,gt=0"`
-	FotoURL     string  `json:"foto_url"`
-	Disponivel  bool    `json:"disponivel"`
-	CategoriaID uint    `json:"categoria_id" binding:"required"`
+	Nome          string  `json:"nome" binding:"required"`
+	Descricao     string  `json:"descricao"`
+	Preco         float64 `json:"preco" binding:"required,gt=0"`
+	FotoURL       string  `json:"foto_url"`
+	Disponivel    bool    `json:"disponivel"`
+	CategoriaID   uint    `json:"categoria_id" binding:"required"`
+	EstoqueAtual  *int    `json:"estoque_atual"`
+	EstoqueAlerta *int    `json:"estoque_alerta"`
 }
 
 func (h *ProdutoHandler) Criar(c *gin.Context) {
@@ -45,12 +47,14 @@ func (h *ProdutoHandler) Criar(c *gin.Context) {
 	}
 
 	produto, err := h.produtoService.Criar(lojaID, service.ProdutoInput{
-		Nome:        req.Nome,
-		Descricao:   req.Descricao,
-		Preco:       req.Preco,
-		FotoURL:     req.FotoURL,
-		Disponivel:  req.Disponivel,
-		CategoriaID: req.CategoriaID,
+		Nome:          req.Nome,
+		Descricao:     req.Descricao,
+		Preco:         req.Preco,
+		FotoURL:       req.FotoURL,
+		Disponivel:    req.Disponivel,
+		CategoriaID:   req.CategoriaID,
+		EstoqueAtual:  req.EstoqueAtual,
+		EstoqueAlerta: req.EstoqueAlerta,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
@@ -75,12 +79,14 @@ func (h *ProdutoHandler) Atualizar(c *gin.Context) {
 	}
 
 	produto, err := h.produtoService.Atualizar(lojaID, produtoID, service.ProdutoInput{
-		Nome:        req.Nome,
-		Descricao:   req.Descricao,
-		Preco:       req.Preco,
-		FotoURL:     req.FotoURL,
-		Disponivel:  req.Disponivel,
-		CategoriaID: req.CategoriaID,
+		Nome:          req.Nome,
+		Descricao:     req.Descricao,
+		Preco:         req.Preco,
+		FotoURL:       req.FotoURL,
+		Disponivel:    req.Disponivel,
+		CategoriaID:   req.CategoriaID,
+		EstoqueAtual:  req.EstoqueAtual,
+		EstoqueAlerta: req.EstoqueAlerta,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})

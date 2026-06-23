@@ -18,21 +18,26 @@ import (
 )
 
 // TaxaPlataformaPercentual é a taxa que a plataforma retém de cada
-// pedido pago (6%), aplicada no checkout via application_fee_amount.
-const TaxaPlataformaPercentual = 6.0
+// pedido pago (8%), aplicada no checkout via application_fee_amount.
+// A taxa da Stripe (~3.99% + R$0,39) é cobrada separadamente pela
+// própria Stripe sobre o valor total — quem absorve isso é a loja
+// conectada, não a plataforma.
+const TaxaPlataformaPercentual = 8.0
 
 type StripeService struct {
-	client              *stripe.Client
-	webhookSecret       string
-	lojaRepo            *repository.LojaRepository
-	pedidoRepo          *repository.PedidoRepository
-	notificationSender  notification.NotificationSender
+	client             *stripe.Client
+	webhookSecret      string
+	db                 *gorm.DB
+	lojaRepo           *repository.LojaRepository
+	pedidoRepo         *repository.PedidoRepository
+	notificationSender notification.NotificationSender
 }
 
 func NewStripeService(secretKey, webhookSecret string, db *gorm.DB, notificationSender notification.NotificationSender) *StripeService {
 	return &StripeService{
 		client:             stripe.NewClient(secretKey),
 		webhookSecret:      webhookSecret,
+		db:                 db,
 		lojaRepo:           repository.NewLojaRepository(db),
 		pedidoRepo:         repository.NewPedidoRepository(db),
 		notificationSender: notificationSender,
@@ -201,9 +206,82 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 		return fmt.Errorf("atualizando status do pedido %d: %w", pedidoID, err)
 	}
 
-	s.notificarPagamento(uint(pedidoID))
+	// Dispara assincronamente pra não atrasar a resposta pro webhook da Stripe
+	go s.processarPosPagamento(uint(pedidoID))
 
 	return nil
+}
+
+// processarPosPagamento roda em goroutine depois do pagamento confirmado:
+// subtrai estoque, envia alertas de estoque baixo e notifica via WhatsApp.
+func (s *StripeService) processarPosPagamento(pedidoID uint) {
+	pedido, err := s.pedidoRepo.BuscarPorID(pedidoID)
+	if err != nil {
+		log.Printf("não foi possível recarregar pedido %d pós-pagamento: %v", pedidoID, err)
+		return
+	}
+
+	loja, err := s.lojaRepo.BuscarPorID(pedido.LojaID)
+	if err != nil {
+		log.Printf("não foi possível carregar loja do pedido %d pós-pagamento: %v", pedidoID, err)
+		return
+	}
+
+	produtoRepo := repository.NewProdutoRepository(s.db)
+
+	// Subtrai estoque de cada item e dispara alerta se necessário
+	var estoqueErr error
+	_ = estoqueErr
+	for _, item := range pedido.Itens {
+		var restante int
+		var alerta bool
+		var nomeItem string
+
+		if item.VariacaoID != nil {
+			variacaoRepo := repository.NewVariacaoRepository(s.db)
+			restante, estoqueErr = variacaoRepo.SubtrairEstoque(*item.VariacaoID, item.Quantidade)
+			if estoqueErr != nil {
+				log.Printf("erro ao subtrair estoque da variação %d: %v", *item.VariacaoID, estoqueErr)
+				continue
+			}
+			if restante < 0 {
+				continue
+			}
+			v, emAlerta := variacaoRepo.BuscarEstoqueAlerta(*item.VariacaoID)
+			if emAlerta {
+				alerta = true
+				nomeItem = fmt.Sprintf("%s (%s)", item.ProdutoNome, v.Nome)
+			}
+		} else {
+			restante, estoqueErr = produtoRepo.SubtrairEstoque(item.ProdutoID, item.Quantidade)
+			if estoqueErr != nil {
+				log.Printf("erro ao subtrair estoque do produto %d: %v", item.ProdutoID, estoqueErr)
+				continue
+			}
+			if restante < 0 {
+				continue
+			}
+			_, emAlerta := produtoRepo.BuscarEstoqueAlerta(item.ProdutoID)
+			if emAlerta {
+				alerta = true
+				nomeItem = item.ProdutoNome
+			}
+		}
+
+		if alerta && s.notificationSender != nil && loja.WhatsappNumero != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			aviso := fmt.Sprintf("⚠️ Alerta de estoque — %s\n\nO produto *%s* chegou a %d unidade(s) restante(s).", loja.Nome, nomeItem, restante)
+			if restante == 0 {
+				aviso = fmt.Sprintf("⚠️ Estoque esgotado — %s\n\nO produto *%s* acabou e foi marcado como indisponível automaticamente.", loja.Nome, nomeItem)
+			}
+			if err := s.notificationSender.EnviarNotificacaoAdmin(ctx, pedido, aviso, loja.WhatsappNumero); err != nil {
+				log.Printf("falha ao enviar alerta de estoque: %v", err)
+			}
+			cancel()
+		}
+	}
+
+	s.notificarPagamento(pedidoID)
 }
 
 // notificarPagamento dispara as duas mensagens de WhatsApp em

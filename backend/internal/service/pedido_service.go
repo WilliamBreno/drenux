@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	_ "time/tzdata" // embute o banco de fusos horários no binário, pra
-	// "America/Sao_Paulo" funcionar mesmo em containers mínimos que não
-	// têm timezone instalado no sistema (comum em deploy)
+	_ "time/tzdata"
 
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 	"github.com/WilliamBreno/cardapio-backend/internal/repository"
@@ -15,6 +13,7 @@ import (
 
 type ItemPedidoInput struct {
 	ProdutoID  uint
+	VariacaoID *uint // nil = produto sem variação
 	Quantidade int
 }
 
@@ -39,9 +38,6 @@ func NewPedidoService(db *gorm.DB) *PedidoService {
 	}
 }
 
-// CriarPorSlug monta o pedido de um cliente final pra uma loja
-// específica. É a rota pública de checkout — antes de existir o Stripe
-// (próxima etapa), o pedido nasce com status "aguardando_pagamento".
 func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pedido, error) {
 	loja, err := s.lojaRepo.BuscarPorSlug(slug)
 	if err != nil {
@@ -52,7 +48,11 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 		return nil, errors.New("o pedido precisa ter pelo menos um item")
 	}
 
-	if err := validarDataRetirada(input.DataRetirada, loja.PermiteMesmoDia); err != nil {
+	// Validações da loja antes de aceitar o pedido
+	if err := validarLojaAberta(loja); err != nil {
+		return nil, err
+	}
+	if err := validarDataRetirada(input.DataRetirada, loja); err != nil {
 		return nil, err
 	}
 
@@ -67,6 +67,7 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		produtoRepo := repository.NewProdutoRepository(tx)
 		pedidoRepo := repository.NewPedidoRepository(tx)
+		variacaoRepo := repository.NewVariacaoRepository(tx)
 
 		var total float64
 		itens := make([]domain.ItemPedido, 0, len(input.Itens))
@@ -87,17 +88,47 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 				return fmt.Errorf("produto %q está indisponível no momento", produto.Nome)
 			}
 
-			// Preço sempre vem do banco, nunca do que o cliente mandou —
-			// é a única forma de garantir que ninguém edita o preço só
-			// alterando a requisição.
-			subtotal := produto.Preco * float64(itemInput.Quantidade)
+			precoUnit := produto.Preco
+			variacaoNome := ""
+
+			if len(produto.Variacoes) > 0 {
+				if itemInput.VariacaoID == nil {
+					return fmt.Errorf("produto %q exige a escolha de uma variação", produto.Nome)
+				}
+				variacao, err := variacaoRepo.BuscarPorID(*itemInput.VariacaoID)
+				if err != nil || variacao.ProdutoID != produto.ID {
+					return fmt.Errorf("variação inválida pro produto %q", produto.Nome)
+				}
+				if !variacao.Disponivel {
+					return fmt.Errorf("variação %q do produto %q está indisponível", variacao.Nome, produto.Nome)
+				}
+				if variacao.EstoqueAtual != nil && *variacao.EstoqueAtual < itemInput.Quantidade {
+					if *variacao.EstoqueAtual == 0 {
+						return fmt.Errorf("variação %q do produto %q está esgotada", variacao.Nome, produto.Nome)
+					}
+					return fmt.Errorf("variação %q tem apenas %d unidade(s) disponível(is)", variacao.Nome, *variacao.EstoqueAtual)
+				}
+				precoUnit += variacao.PrecoAdicional
+				variacaoNome = variacao.Nome
+			} else {
+				if produto.EstoqueAtual != nil && *produto.EstoqueAtual < itemInput.Quantidade {
+					if *produto.EstoqueAtual == 0 {
+						return fmt.Errorf("produto %q está esgotado", produto.Nome)
+					}
+					return fmt.Errorf("produto %q tem apenas %d unidade(s) disponível(is)", produto.Nome, *produto.EstoqueAtual)
+				}
+			}
+
+			subtotal := precoUnit * float64(itemInput.Quantidade)
 			total += subtotal
 
 			itens = append(itens, domain.ItemPedido{
-				ProdutoID:   produto.ID,
-				ProdutoNome: produto.Nome,
-				Quantidade:  itemInput.Quantidade,
-				PrecoUnit:   produto.Preco,
+				ProdutoID:    produto.ID,
+				ProdutoNome:  produto.Nome,
+				Quantidade:   itemInput.Quantidade,
+				PrecoUnit:    precoUnit,
+				VariacaoID:   itemInput.VariacaoID,
+				VariacaoNome: variacaoNome,
 			})
 		}
 
@@ -120,23 +151,78 @@ func (s *PedidoService) ListarPorLoja(lojaID uint) ([]domain.Pedido, error) {
 	return s.pedidoRepo.ListarPorLoja(lojaID)
 }
 
-// validarDataRetirada compara as datas no fuso de São Paulo, não no fuso
-// do servidor — importante porque o Render normalmente roda em UTC, e
-// comparar "hoje" sem fixar o fuso geraria erro perto da meia-noite.
-func validarDataRetirada(dataRetirada time.Time, permiteMesmoDia bool) error {
+// validarLojaAberta verifica se a loja está aceitando pedidos agora —
+// checa pausa manual, horário de funcionamento e margem de fechamento.
+func validarLojaAberta(loja *domain.Loja) error {
+	if loja.Pausado {
+		msg := "loja temporariamente fechada"
+		if loja.MensagemPausa != "" {
+			msg = loja.MensagemPausa
+		}
+		return errors.New(msg)
+	}
+
+	// Se não tem horário configurado, não valida
+	if loja.HorarioAbertura == "" || loja.HorarioFechamento == "" {
+		return nil
+	}
+
 	fusoBrasil, err := time.LoadLocation("America/Sao_Paulo")
 	if err != nil {
-		fusoBrasil = time.UTC // fallback, não deveria acontecer em produção
+		fusoBrasil = time.UTC
 	}
 
-	hoje := time.Now().In(fusoBrasil).Format("2006-01-02")
-	dataRetiradaStr := dataRetirada.In(fusoBrasil).Format("2006-01-02")
+	agora := time.Now().In(fusoBrasil)
+	agoraStr := agora.Format("15:04")
 
-	if dataRetiradaStr < hoje {
-		return errors.New("data de retirada não pode ser no passado")
+	// Aplica a margem de fechamento: subtrai os minutos da hora de
+	// fechamento pra definir o limite real de aceitar pedidos.
+	fechamento := loja.HorarioFechamento
+	if loja.MargemFechamentoMinutos > 0 {
+		t, err := time.Parse("15:04", loja.HorarioFechamento)
+		if err == nil {
+			t = t.Add(-time.Duration(loja.MargemFechamentoMinutos) * time.Minute)
+			fechamento = t.Format("15:04")
+		}
 	}
-	if dataRetiradaStr == hoje && !permiteMesmoDia {
-		return errors.New("essa loja não aceita pedidos para o mesmo dia")
+
+	if agoraStr < loja.HorarioAbertura || agoraStr >= fechamento {
+		return fmt.Errorf("loja fechada — funcionamos das %s às %s", loja.HorarioAbertura, loja.HorarioFechamento)
 	}
+
+	return nil
+}
+
+// validarDataRetirada aplica as regras do modo de pedido da loja.
+func validarDataRetirada(dataRetirada time.Time, loja *domain.Loja) error {
+	fusoBrasil, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		fusoBrasil = time.UTC
+	}
+
+	agora := time.Now().In(fusoBrasil)
+
+	// No modo imediato, não há data de retirada pra validar — o frontend
+	// nem exibe esse campo, mas uma req maliciosa poderia mandar algo.
+	// Aceitamos qualquer data >= agora.
+	if loja.ModoPedido == domain.ModoPedidoImediato {
+		if dataRetirada.Before(agora.Add(-1 * time.Minute)) {
+			return errors.New("data de retirada não pode ser no passado")
+		}
+		return nil
+	}
+
+	// Modo agendado: a data precisa estar no futuro com antecedência
+	// mínima configurada pelo dono.
+	minimoHoras := loja.AntecedenciaMinimaHoras
+	if minimoHoras <= 0 {
+		minimoHoras = 1
+	}
+	minimo := agora.Add(time.Duration(minimoHoras) * time.Hour)
+
+	if dataRetirada.Before(minimo) {
+		return fmt.Errorf("essa loja exige pelo menos %d hora(s) de antecedência pra fazer um pedido", minimoHoras)
+	}
+
 	return nil
 }

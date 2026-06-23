@@ -36,6 +36,7 @@ func main() {
 		&domain.Loja{},
 		&domain.Categoria{},
 		&domain.Produto{},
+		&domain.VariacaoProduto{},
 		&domain.Pedido{},
 		&domain.ItemPedido{},
 	); err != nil {
@@ -73,6 +74,9 @@ func main() {
 
 	produtoService := service.NewProdutoService(db)
 	produtoHandler := handler.NewProdutoHandler(produtoService)
+
+	variacaoService := service.NewVariacaoService(db)
+	variacaoHandler := handler.NewVariacaoHandler(variacaoService)
 
 	pedidoService := service.NewPedidoService(db)
 	pedidoHandler := handler.NewPedidoHandler(pedidoService)
@@ -129,6 +133,12 @@ func main() {
 	admin.POST("/produtos", produtoHandler.Criar)
 	admin.PUT("/produtos/:id", produtoHandler.Atualizar)
 	admin.DELETE("/produtos/:id", produtoHandler.Deletar)
+
+	// Variações aninhadas em produtos: /admin/produtos/:produtoId/variacoes
+	admin.GET("/produtos/:produtoId/variacoes", variacaoHandler.Listar)
+	admin.POST("/produtos/:produtoId/variacoes", variacaoHandler.Criar)
+	admin.PUT("/produtos/:produtoId/variacoes/:variacaoId", variacaoHandler.Atualizar)
+	admin.DELETE("/produtos/:produtoId/variacoes/:variacaoId", variacaoHandler.Deletar)
 
 	admin.GET("/pedidos", pedidoHandler.Listar)
 

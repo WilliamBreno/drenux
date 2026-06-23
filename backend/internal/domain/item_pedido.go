@@ -16,6 +16,11 @@ type ItemPedido struct {
 	ProdutoNome string  `gorm:"size:100;not null" json:"produto_nome"`
 	Quantidade  int     `gorm:"not null" json:"quantidade"`
 	PrecoUnit   float64 `gorm:"not null" json:"preco_unit"`
+
+	// Variação escolhida (snapshot do momento da compra, igual ao nome
+	// do produto — se a variação mudar depois, o histórico não muda).
+	VariacaoID   *uint  `gorm:"default:null" json:"variacao_id"`
+	VariacaoNome string `gorm:"size:50" json:"variacao_nome"`
 }
 
 func (ItemPedido) TableName() string {

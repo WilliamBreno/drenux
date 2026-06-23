@@ -17,8 +17,9 @@ func NewPedidoHandler(pedidoService *service.PedidoService) *PedidoHandler {
 }
 
 type itemPedidoRequest struct {
-	ProdutoID  uint `json:"produto_id" binding:"required"`
-	Quantidade int  `json:"quantidade" binding:"required,gt=0"`
+	ProdutoID  uint  `json:"produto_id" binding:"required"`
+	VariacaoID *uint `json:"variacao_id"`
+	Quantidade int   `json:"quantidade" binding:"required,gt=0"`
 }
 
 type pedidoRequest struct {
@@ -43,6 +44,7 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 	for i, item := range req.Itens {
 		itensInput[i] = service.ItemPedidoInput{
 			ProdutoID:  item.ProdutoID,
+			VariacaoID: item.VariacaoID,
 			Quantidade: item.Quantidade,
 		}
 	}
