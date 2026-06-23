@@ -8,6 +8,7 @@ import {
 } from '../../api/admin';
 import { enviarImagem, logoMiniatura } from '../../api/upload';
 import { Campo } from '../../components/Campo';
+import { QRCodeCardapio } from '../../components/QRCodeCardapio';
 
 const MARGENS = [0, 5, 10, 15, 20, 25, 30];
 
@@ -351,6 +352,7 @@ export function Configuracoes() {
           {mutSalvar.isPending ? 'Salvando...' : 'Salvar'}
         </button>
       </form>
+      {loja && <QRCodeCardapio slug={loja.slug} nomeLoja={loja.nome} />}
     </div>
   );
 }

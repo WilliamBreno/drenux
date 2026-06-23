@@ -116,6 +116,13 @@ func (s *WhatsmeowSender) EnviarNotificacaoAdmin(ctx context.Context, pedido *do
 	return s.enviarTexto(ctx, telefoneAdmin, montarMensagemAdmin(pedido, lojaNome))
 }
 
+func (s *WhatsmeowSender) EnviarTextoAdmin(ctx context.Context, telefoneAdmin, texto string) error {
+	if telefoneAdmin == "" {
+		return fmt.Errorf("telefone do admin não informado")
+	}
+	return s.enviarTexto(ctx, telefoneAdmin, texto)
+}
+
 // enviarTexto resolve o número pelo IsOnWhatsApp antes de mandar a
 // mensagem, em vez de montar o destinatário direto a partir do número
 // puro. É essa consulta ao servidor da própria WhatsApp que resolve o

@@ -101,6 +101,9 @@ func main() {
 	lojaService := service.NewLojaService(db)
 	lojaHandler := handler.NewLojaHandler(lojaService)
 
+	relatorioService := service.NewRelatorioService(db, whatsappSender)
+	relatorioHandler := handler.NewRelatorioHandler(relatorioService, cfg.CronSecret)
+
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
 	router.POST("/auth/login", authHandler.Login)
 
@@ -113,6 +116,10 @@ func main() {
 	// Webhook da Stripe — chamado pela Stripe, não por usuário. Validado
 	// por assinatura, não por JWT.
 	router.POST("/webhooks/stripe", stripeHandler.Webhook)
+
+	// Relatório semanal — chamado pelo cron-job.org todo domingo.
+	// Protegido por X-Cron-Secret, não por JWT.
+	router.POST("/relatorio/semanal", relatorioHandler.EnviarSemanal)
 
 	// Grupo de rotas administrativas — tudo aqui dentro exige token válido.
 	admin := router.Group("/admin")
@@ -134,11 +141,13 @@ func main() {
 	admin.PUT("/produtos/:id", produtoHandler.Atualizar)
 	admin.DELETE("/produtos/:id", produtoHandler.Deletar)
 
-	// Variações aninhadas em produtos: /admin/produtos/:produtoId/variacoes
-	admin.GET("/produtos/:produtoId/variacoes", variacaoHandler.Listar)
-	admin.POST("/produtos/:produtoId/variacoes", variacaoHandler.Criar)
-	admin.PUT("/produtos/:produtoId/variacoes/:variacaoId", variacaoHandler.Atualizar)
-	admin.DELETE("/produtos/:produtoId/variacoes/:variacaoId", variacaoHandler.Deletar)
+	// Variações num sub-grupo separado pra evitar conflito com :id do produto.
+	// O Gin não permite :id e :produtoId no mesmo prefixo.
+	variacoes := admin.Group("/variacoes")
+	variacoes.GET("/:produtoId", variacaoHandler.Listar)
+	variacoes.POST("/:produtoId", variacaoHandler.Criar)
+	variacoes.PUT("/:produtoId/:variacaoId", variacaoHandler.Atualizar)
+	variacoes.DELETE("/:produtoId/:variacaoId", variacaoHandler.Deletar)
 
 	admin.GET("/pedidos", pedidoHandler.Listar)
 

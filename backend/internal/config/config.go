@@ -16,6 +16,7 @@ type Config struct {
 	StripeSecretKey     string
 	StripeWebhookSecret string
 	FrontendURL         string
+	CronSecret          string
 }
 
 func Load() *Config {
@@ -35,7 +36,8 @@ func Load() *Config {
 		// Padrão já bate com a porta do Vite em desenvolvimento — quando
 		// fizer o deploy do frontend (Vercel), define essa variável com
 		// a URL real em produção.
-		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:5173"),
+		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:5173"),
+		CronSecret:          getEnv("CRON_SECRET", ""),
 	}
 
 	if cfg.DatabaseURL == "" {

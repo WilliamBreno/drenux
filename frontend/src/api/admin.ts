@@ -96,22 +96,22 @@ export interface VariacaoInput {
 }
 
 export async function listarVariacoes(produtoId: number): Promise<import('./types').VariacaoProduto[]> {
-  const { data } = await api.get(`/admin/produtos/${produtoId}/variacoes`);
+  const { data } = await api.get(`/admin/variacoes/${produtoId}`);
   return data;
 }
 
 export async function criarVariacao(produtoId: number, input: VariacaoInput): Promise<import('./types').VariacaoProduto> {
-  const { data } = await api.post(`/admin/produtos/${produtoId}/variacoes`, input);
+  const { data } = await api.post(`/admin/variacoes/${produtoId}`, input);
   return data;
 }
 
 export async function atualizarVariacao(produtoId: number, variacaoId: number, input: VariacaoInput): Promise<import('./types').VariacaoProduto> {
-  const { data } = await api.put(`/admin/produtos/${produtoId}/variacoes/${variacaoId}`, input);
+  const { data } = await api.put(`/admin/variacoes/${produtoId}/${variacaoId}`, input);
   return data;
 }
 
 export async function deletarVariacao(produtoId: number, variacaoId: number): Promise<void> {
-  await api.delete(`/admin/produtos/${produtoId}/variacoes/${variacaoId}`);
+  await api.delete(`/admin/variacoes/${produtoId}/${variacaoId}`);
 }
 
 // Stripe

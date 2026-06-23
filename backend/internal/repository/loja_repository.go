@@ -87,6 +87,16 @@ func (r *LojaRepository) BuscarPorSlug(slug string) (*domain.Loja, error) {
 	return &loja, nil
 }
 
+// ListarComWhatsapp retorna todas as lojas que têm número de WhatsApp
+// configurado — usada pelo relatório semanal pra saber quem notificar.
+func (r *LojaRepository) ListarComWhatsapp() ([]domain.Loja, error) {
+	var lojas []domain.Loja
+	if err := r.db.Where("whatsapp_numero != ''").Find(&lojas).Error; err != nil {
+		return nil, err
+	}
+	return lojas, nil
+}
+
 // SlugExiste confere se um slug já está em uso, pra geração de slug único
 // no cadastro.
 func (r *LojaRepository) SlugExiste(slug string) (bool, error) {

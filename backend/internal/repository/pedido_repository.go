@@ -47,3 +47,48 @@ func (r *PedidoRepository) AtualizarStatus(pedidoID uint, status domain.StatusPe
 func (r *PedidoRepository) AtualizarStripeSessionID(pedidoID uint, sessionID string) error {
 	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Update("stripe_session_id", sessionID).Error
 }
+
+// ResumoSemana agrega os pedidos pagos de uma loja em um período.
+type ResumoSemana struct {
+	TotalPedidos    int
+	Faturamento     float64
+	ProdutoTop      string
+	QuantidadeTop   int
+}
+
+// BuscarResumoSemana retorna os dados agregados de pedidos pagos
+// num intervalo de datas, pra montar o relatório semanal.
+func (r *PedidoRepository) BuscarResumoSemana(lojaID uint, inicio, fim interface{}) (*ResumoSemana, error) {
+	var pedidos []domain.Pedido
+	if err := r.db.
+		Where("loja_id = ? AND status = ? AND updated_at BETWEEN ? AND ?",
+			lojaID, domain.StatusPago, inicio, fim).
+		Preload("Itens").
+		Find(&pedidos).Error; err != nil {
+		return nil, err
+	}
+
+	resumo := &ResumoSemana{}
+	resumo.TotalPedidos = len(pedidos)
+
+	contagem := map[string]int{}
+	for _, pedido := range pedidos {
+		resumo.Faturamento += pedido.Total
+		for _, item := range pedido.Itens {
+			nome := item.ProdutoNome
+			if item.VariacaoNome != "" {
+				nome += " (" + item.VariacaoNome + ")"
+			}
+			contagem[nome] += item.Quantidade
+		}
+	}
+
+	for nome, qtd := range contagem {
+		if qtd > resumo.QuantidadeTop {
+			resumo.QuantidadeTop = qtd
+			resumo.ProdutoTop = nome
+		}
+	}
+
+	return resumo, nil
+}

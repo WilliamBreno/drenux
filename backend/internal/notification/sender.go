@@ -20,4 +20,8 @@ type NotificationSender interface {
 	// pago. telefoneAdmin vem de Loja.WhatsappNumero — cada loja tem o
 	// seu, por isso não é fixo na implementação.
 	EnviarNotificacaoAdmin(ctx context.Context, pedido *domain.Pedido, lojaNome, telefoneAdmin string) error
+
+	// EnviarTextoAdmin envia uma mensagem de texto livre pro dono da loja.
+	// Usado pelo relatório semanal e alertas de estoque personalizados.
+	EnviarTextoAdmin(ctx context.Context, telefoneAdmin, texto string) error
 }
