@@ -43,6 +43,7 @@ func (h *CatalogoHandler) BuscarCardapio(c *gin.Context) {
 			"taxa_entrega_tipo":         cardapio.Loja.TaxaEntregaTipo,
 			"taxa_entrega_valor":        cardapio.Loja.TaxaEntregaValor,
 			"valor_minimo_pedido":       cardapio.Loja.ValorMinimoPedido,
+			"tema":                      cardapio.Loja.Tema,
 		},
 		"categorias": cardapio.Categorias,
 		"produtos":   cardapio.Produtos,

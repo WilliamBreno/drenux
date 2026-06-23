@@ -42,6 +42,7 @@ type configuracoesRequest struct {
 	TaxaEntregaTipo         string  `json:"taxa_entrega_tipo"`
 	TaxaEntregaValor        float64 `json:"taxa_entrega_valor"`
 	ValorMinimoPedido       float64 `json:"valor_minimo_pedido"`
+	Tema                    string  `json:"tema"`
 }
 
 // AtualizarConfiguracoes atende PUT /admin/loja
@@ -74,6 +75,7 @@ func (h *LojaHandler) AtualizarConfiguracoes(c *gin.Context) {
 		TaxaEntregaTipo:         req.TaxaEntregaTipo,
 		TaxaEntregaValor:        req.TaxaEntregaValor,
 		ValorMinimoPedido:       req.ValorMinimoPedido,
+		Tema:                    req.Tema,
 	}
 
 	if err := h.lojaService.AtualizarConfiguracoes(lojaID, cfg); err != nil {

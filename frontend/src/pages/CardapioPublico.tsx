@@ -76,7 +76,7 @@ export function CardapioPublico() {
       : `Estamos fechados no momento. Funcionamos das ${data.loja.horario_abertura} às ${data.loja.horario_fechamento}.`;
 
     return (
-      <div className="min-h-screen bg-fundo">
+      <div className="min-h-screen bg-fundo" data-tema={data.loja.tema || 'kraft'}>
         <header className="bg-acento px-6 py-8 text-center">
           {data.loja.logo_url && (
             <img src={data.loja.logo_url} alt={data.loja.nome}
@@ -99,7 +99,7 @@ export function CardapioPublico() {
     : data.produtos;
 
   return (
-    <div className="min-h-screen bg-fundo pb-28">
+    <div className="min-h-screen bg-fundo pb-28" data-tema={data.loja.tema || 'kraft'}>
       {pagamentoConfirmado && (
         <div className="bg-emerald-600 px-6 py-3 text-center text-sm font-medium text-white">
           Pedido confirmado! Você vai receber uma mensagem no WhatsApp com os detalhes.

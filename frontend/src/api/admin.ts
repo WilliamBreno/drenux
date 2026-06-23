@@ -79,6 +79,7 @@ export interface ConfiguracoesInput {
   taxa_entrega_tipo: string;
   taxa_entrega_valor: number;
   valor_minimo_pedido: number;
+  tema: string;
 }
 
 export async function atualizarConfiguracoes(input: ConfiguracoesInput): Promise<void> {

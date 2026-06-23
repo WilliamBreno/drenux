@@ -44,6 +44,14 @@ type Loja struct {
 	Pausado        bool   `gorm:"default:false" json:"pausado"`
 	MensagemPausa  string `gorm:"size:300" json:"mensagem_pausa"`
 
+	// Tema visual do cardápio público — controlado pelo dono no painel.
+	// Padrão: "kraft" (a paleta atual de papel pardo + vermelho toldo).
+	Tema string `gorm:"size:30;default:'kraft'" json:"tema"`
+
+	// Tema visual do cardápio público — não afeta o painel admin.
+	// Valores válidos: kraft, oceano, floresta, rosa, noite, carvao, brasa, hortela
+	Tema string `gorm:"size:20;default:'kraft'" json:"tema"`
+
 	// Valor mínimo de pedido — 0 = sem restrição.
 	ValorMinimoPedido float64 `gorm:"default:0" json:"valor_minimo_pedido"`
 

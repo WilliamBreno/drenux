@@ -7,6 +7,7 @@ import {
   iniciarOnboardingStripe,
 } from '../../api/admin';
 import { enviarImagem, logoMiniatura } from '../../api/upload';
+import { TEMAS } from '../../themes';
 import { Campo } from '../../components/Campo';
 import { QRCodeCardapio } from '../../components/QRCodeCardapio';
 
@@ -32,6 +33,7 @@ export function Configuracoes() {
   const [taxaTipo, setTaxaTipo] = useState<'fixa' | 'combinado'>('combinado');
   const [taxaValor, setTaxaValor] = useState(0);
   const [valorMinimo, setValorMinimo] = useState(0);
+  const [tema, setTema] = useState('kraft');
   const [salvo, setSalvo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [conectandoStripe, setConectandoStripe] = useState(false);
@@ -54,6 +56,7 @@ export function Configuracoes() {
       setTaxaTipo(loja.taxa_entrega_tipo ?? 'combinado');
       setTaxaValor(loja.taxa_entrega_valor ?? 0);
       setValorMinimo(loja.valor_minimo_pedido ?? 0);
+      setTema(loja.tema ?? 'kraft');
     }
   }, [loja]);
 
@@ -85,6 +88,7 @@ export function Configuracoes() {
       taxa_entrega_tipo: taxaTipo,
       taxa_entrega_valor: taxaValor,
       valor_minimo_pedido: valorMinimo,
+      tema,
     });
   }
 
@@ -111,6 +115,7 @@ export function Configuracoes() {
         taxa_entrega_tipo: taxaTipo,
         taxa_entrega_valor: taxaValor,
         valor_minimo_pedido: valorMinimo,
+        tema,
       });
       queryClient.invalidateQueries({ queryKey: ['loja'] });
     } catch {
@@ -340,6 +345,40 @@ export function Configuracoes() {
             Deixa em branco pra não ter mínimo. Calculado sobre o subtotal (sem taxa de entrega).
           </span>
         </Campo>
+
+        {/* Seletor de tema */}
+        <div className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">
+            Tema do cardápio
+          </p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
+            {TEMAS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTema(t.id)}
+                className={`rounded-xl border-2 p-2 text-left transition ${
+                  tema === t.id ? 'border-acento' : 'border-tinta/10 hover:border-tinta/25'
+                }`}
+              >
+                <div
+                  className="mb-1.5 h-8 w-full rounded-lg"
+                  style={{ background: t.acento }}
+                />
+                <div
+                  className="mb-1 h-2 w-full rounded"
+                  style={{ background: t.fundo }}
+                />
+                <p className="truncate text-xs font-medium text-tinta">{t.nome}</p>
+              </button>
+            ))}
+          </div>
+          {tema && (
+            <p className="text-xs text-tinta-suave">
+              {TEMAS.find((t) => t.id === tema)?.descricao}
+            </p>
+          )}
+        </div>
 
         {erro && <p className="text-sm text-acento">{erro}</p>}
         {salvo && <p className="text-sm text-emerald-600">Salvo!</p>}

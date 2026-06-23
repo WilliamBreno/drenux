@@ -57,6 +57,7 @@ export interface Loja {
   taxa_entrega_tipo: 'fixa' | 'combinado';
   taxa_entrega_valor: number;
   valor_minimo_pedido: number;
+  tema: string;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +79,7 @@ export interface CardapioPublico {
     taxa_entrega_tipo: 'fixa' | 'combinado';
     taxa_entrega_valor: number;
     valor_minimo_pedido: number;
+    tema: string;
   };
   categorias: Categoria[];
   produtos: Produto[];
