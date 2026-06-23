@@ -41,15 +41,20 @@ func (r *LojaRepository) AtualizarStripeAccountID(lojaID uint, stripeAccountID s
 
 // ConfiguracoesLoja agrupa todos os campos editáveis pelo dono no painel.
 type ConfiguracoesLoja struct {
-	WhatsappNumero           string
-	LogoURL                  string
-	ModoPedido               string
-	AntecedenciaMinimaHoras  int
-	HorarioAbertura          string
-	HorarioFechamento        string
-	MargemFechamentoMinutos  int
-	Pausado                  bool
-	MensagemPausa            string
+	WhatsappNumero          string
+	LogoURL                 string
+	ModoPedido              string
+	AntecedenciaMinimaHoras int
+	HorarioAbertura         string
+	HorarioFechamento       string
+	MargemFechamentoMinutos int
+	Pausado                 bool
+	MensagemPausa           string
+	AceitaRetirada          bool
+	AceitaEntrega           bool
+	TaxaEntregaTipo         string
+	TaxaEntregaValor        float64
+	ValorMinimoPedido       float64
 }
 
 // AtualizarConfiguracoes grava todos os campos editáveis da loja de uma vez.
@@ -64,6 +69,11 @@ func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLo
 		"margem_fechamento_minutos": cfg.MargemFechamentoMinutos,
 		"pausado":                   cfg.Pausado,
 		"mensagem_pausa":            cfg.MensagemPausa,
+		"aceita_retirada":           cfg.AceitaRetirada,
+		"aceita_entrega":            cfg.AceitaEntrega,
+		"taxa_entrega_tipo":         cfg.TaxaEntregaTipo,
+		"taxa_entrega_valor":        cfg.TaxaEntregaValor,
+		"valor_minimo_pedido":       cfg.ValorMinimoPedido,
 	}).Error
 }
 

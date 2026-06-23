@@ -28,15 +28,20 @@ func (h *LojaHandler) Buscar(c *gin.Context) {
 }
 
 type configuracoesRequest struct {
-	WhatsappNumero          string `json:"whatsapp_numero" binding:"required"`
-	LogoURL                 string `json:"logo_url"`
-	ModoPedido              string `json:"modo_pedido"`
-	AntecedenciaMinimaHoras int    `json:"antecedencia_minima_horas"`
-	HorarioAbertura         string `json:"horario_abertura"`
-	HorarioFechamento       string `json:"horario_fechamento"`
-	MargemFechamentoMinutos int    `json:"margem_fechamento_minutos"`
-	Pausado                 bool   `json:"pausado"`
-	MensagemPausa           string `json:"mensagem_pausa"`
+	WhatsappNumero          string  `json:"whatsapp_numero" binding:"required"`
+	LogoURL                 string  `json:"logo_url"`
+	ModoPedido              string  `json:"modo_pedido"`
+	AntecedenciaMinimaHoras int     `json:"antecedencia_minima_horas"`
+	HorarioAbertura         string  `json:"horario_abertura"`
+	HorarioFechamento       string  `json:"horario_fechamento"`
+	MargemFechamentoMinutos int     `json:"margem_fechamento_minutos"`
+	Pausado                 bool    `json:"pausado"`
+	MensagemPausa           string  `json:"mensagem_pausa"`
+	AceitaRetirada          bool    `json:"aceita_retirada"`
+	AceitaEntrega           bool    `json:"aceita_entrega"`
+	TaxaEntregaTipo         string  `json:"taxa_entrega_tipo"`
+	TaxaEntregaValor        float64 `json:"taxa_entrega_valor"`
+	ValorMinimoPedido       float64 `json:"valor_minimo_pedido"`
 }
 
 // AtualizarConfiguracoes atende PUT /admin/loja
@@ -64,6 +69,11 @@ func (h *LojaHandler) AtualizarConfiguracoes(c *gin.Context) {
 		MargemFechamentoMinutos: req.MargemFechamentoMinutos,
 		Pausado:                 req.Pausado,
 		MensagemPausa:           req.MensagemPausa,
+		AceitaRetirada:          req.AceitaRetirada,
+		AceitaEntrega:           req.AceitaEntrega,
+		TaxaEntregaTipo:         req.TaxaEntregaTipo,
+		TaxaEntregaValor:        req.TaxaEntregaValor,
+		ValorMinimoPedido:       req.ValorMinimoPedido,
 	}
 
 	if err := h.lojaService.AtualizarConfiguracoes(lojaID, cfg); err != nil {

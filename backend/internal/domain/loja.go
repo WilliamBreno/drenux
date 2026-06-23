@@ -44,6 +44,20 @@ type Loja struct {
 	Pausado        bool   `gorm:"default:false" json:"pausado"`
 	MensagemPausa  string `gorm:"size:300" json:"mensagem_pausa"`
 
+	// Valor mínimo de pedido — 0 = sem restrição.
+	ValorMinimoPedido float64 `gorm:"default:0" json:"valor_minimo_pedido"`
+
+	// Modos de recebimento — o dono define quais aceita.
+	// Pelo menos um dos dois deve estar ativo.
+	AceitaRetirada bool `gorm:"default:true" json:"aceita_retirada"`
+	AceitaEntrega  bool `gorm:"default:false" json:"aceita_entrega"`
+
+	// Taxa de entrega:
+	// "fixa"      → valor fixo definido pelo dono, somado ao total no checkout
+	// "combinado" → cliente informa o endereço, dono combina o valor fora do sistema
+	TaxaEntregaTipo  string  `gorm:"size:20;default:'combinado'" json:"taxa_entrega_tipo"`
+	TaxaEntregaValor float64 `gorm:"default:0" json:"taxa_entrega_valor"`
+
 	// Mantido por compatibilidade — substituído por ModoPedido.
 	// Será removido numa migration futura.
 	PermiteMesmoDia bool `gorm:"default:false" json:"permite_mesmo_dia"`

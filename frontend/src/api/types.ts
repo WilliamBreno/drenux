@@ -52,6 +52,11 @@ export interface Loja {
   margem_fechamento_minutos: number;
   pausado: boolean;
   mensagem_pausa: string;
+  aceita_retirada: boolean;
+  aceita_entrega: boolean;
+  taxa_entrega_tipo: 'fixa' | 'combinado';
+  taxa_entrega_valor: number;
+  valor_minimo_pedido: number;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +73,11 @@ export interface CardapioPublico {
     margem_fechamento_minutos: number;
     pausado: boolean;
     mensagem_pausa: string;
+    aceita_retirada: boolean;
+    aceita_entrega: boolean;
+    taxa_entrega_tipo: 'fixa' | 'combinado';
+    taxa_entrega_valor: number;
+    valor_minimo_pedido: number;
   };
   categorias: Categoria[];
   produtos: Produto[];
@@ -92,6 +102,8 @@ export interface Pedido {
   data_retirada: string;
   status: StatusPedido;
   total: number;
+  modo_entrega: 'retirada' | 'entrega';
+  endereco_entrega: string;
   itens: ItemPedido[];
   created_at: string;
   updated_at: string;

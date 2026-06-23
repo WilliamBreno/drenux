@@ -26,6 +26,11 @@ export function Configuracoes() {
   const [margem, setMargem] = useState(0);
   const [pausado, setPausado] = useState(false);
   const [mensagemPausa, setMensagemPausa] = useState('');
+  const [aceitaRetirada, setAceitaRetirada] = useState(true);
+  const [aceitaEntrega, setAceitaEntrega] = useState(false);
+  const [taxaTipo, setTaxaTipo] = useState<'fixa' | 'combinado'>('combinado');
+  const [taxaValor, setTaxaValor] = useState(0);
+  const [valorMinimo, setValorMinimo] = useState(0);
   const [salvo, setSalvo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [conectandoStripe, setConectandoStripe] = useState(false);
@@ -43,6 +48,11 @@ export function Configuracoes() {
       setMargem(loja.margem_fechamento_minutos ?? 0);
       setPausado(loja.pausado ?? false);
       setMensagemPausa(loja.mensagem_pausa ?? '');
+      setAceitaRetirada(loja.aceita_retirada ?? true);
+      setAceitaEntrega(loja.aceita_entrega ?? false);
+      setTaxaTipo(loja.taxa_entrega_tipo ?? 'combinado');
+      setTaxaValor(loja.taxa_entrega_valor ?? 0);
+      setValorMinimo(loja.valor_minimo_pedido ?? 0);
     }
   }, [loja]);
 
@@ -69,6 +79,11 @@ export function Configuracoes() {
       margem_fechamento_minutos: margem,
       pausado,
       mensagem_pausa: mensagemPausa,
+      aceita_retirada: aceitaRetirada,
+      aceita_entrega: aceitaEntrega,
+      taxa_entrega_tipo: taxaTipo,
+      taxa_entrega_valor: taxaValor,
+      valor_minimo_pedido: valorMinimo,
     });
   }
 
@@ -90,6 +105,11 @@ export function Configuracoes() {
         margem_fechamento_minutos: margem,
         pausado,
         mensagem_pausa: mensagemPausa,
+        aceita_retirada: aceitaRetirada,
+        aceita_entrega: aceitaEntrega,
+        taxa_entrega_tipo: taxaTipo,
+        taxa_entrega_valor: taxaValor,
+        valor_minimo_pedido: valorMinimo,
       });
       queryClient.invalidateQueries({ queryKey: ['loja'] });
     } catch {
@@ -178,7 +198,7 @@ export function Configuracoes() {
               <input type="radio" name="modo" value="imediato" checked={modoPedido === 'imediato'} onChange={() => setModoPedido('imediato')} className="mt-0.5 accent-acento" />
               <div>
                 <p className="text-sm font-medium text-tinta">Entrega imediata</p>
-                <p className="text-xs text-tinta-suave">Cliente faz o pedido sem agendar data — ideal pra produtos já prontos ou preparados no dia.</p>
+                <p className="text-xs text-tinta-suave">Cliente faz o pedido sem agendar data — ideal pra produtos já prontos.</p>
               </div>
             </label>
             <label className="flex items-start gap-3 cursor-pointer">
@@ -249,6 +269,76 @@ export function Configuracoes() {
             Fecha a loja temporariamente com uma mensagem personalizada exibida pro cliente.
           </p>
         </div>
+
+        {/* Modos de recebimento */}
+        <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Modos de recebimento</p>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={aceitaRetirada} onChange={(e) => setAceitaRetirada(e.target.checked)} className="h-4 w-4 accent-acento" />
+            <span className="text-sm text-tinta">Retirada no local</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={aceitaEntrega} onChange={(e) => setAceitaEntrega(e.target.checked)} className="h-4 w-4 accent-acento" />
+            <span className="text-sm text-tinta">Entrega em domicílio</span>
+          </label>
+
+          {aceitaEntrega && (
+            <div className="space-y-3 pt-1">
+              <p className="text-xs font-medium text-tinta-suave">Taxa de entrega</p>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="taxaTipo" value="fixa" checked={taxaTipo === 'fixa'} onChange={() => setTaxaTipo('fixa')} className="mt-0.5 accent-acento" />
+                  <div>
+                    <p className="text-sm font-medium text-tinta">Taxa fixa</p>
+                    <p className="text-xs text-tinta-suave">Você define o valor agora e é cobrado automaticamente no checkout.</p>
+                  </div>
+                </label>
+                {taxaTipo === 'fixa' && (
+                  <Campo label="Valor da entrega (R$)" className="ml-6">
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="0"
+                      value={taxaValor || ''}
+                      onChange={(e) => setTaxaValor(parseFloat(e.target.value) || 0)}
+                      placeholder="0,00"
+                      className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento"
+                    />
+                  </Campo>
+                )}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="taxaTipo" value="combinado" checked={taxaTipo === 'combinado'} onChange={() => setTaxaTipo('combinado')} className="mt-0.5 accent-acento" />
+                  <div>
+                    <p className="text-sm font-medium text-tinta">A combinar</p>
+                    <p className="text-xs text-tinta-suave">O cliente informa o endereço, você combina o frete fora do sistema.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {!aceitaRetirada && !aceitaEntrega && (
+            <p className="text-xs text-acento">Ative pelo menos um modo de recebimento.</p>
+          )}
+        </div>
+
+        {/* Valor mínimo de pedido */}
+        <Campo label="Pedido mínimo (R$)">
+          <input
+            type="number"
+            step="0.50"
+            min="0"
+            value={valorMinimo || ''}
+            onChange={(e) => setValorMinimo(parseFloat(e.target.value) || 0)}
+            placeholder="Sem mínimo"
+            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+          />
+          <span className="mt-1 block text-xs text-tinta-suave">
+            Deixa em branco pra não ter mínimo. Calculado sobre o subtotal (sem taxa de entrega).
+          </span>
+        </Campo>
 
         {erro && <p className="text-sm text-acento">{erro}</p>}
         {salvo && <p className="text-sm text-emerald-600">Salvo!</p>}

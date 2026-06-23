@@ -74,6 +74,11 @@ export interface ConfiguracoesInput {
   margem_fechamento_minutos: number;
   pausado: boolean;
   mensagem_pausa: string;
+  aceita_retirada: boolean;
+  aceita_entrega: boolean;
+  taxa_entrega_tipo: string;
+  taxa_entrega_valor: number;
+  valor_minimo_pedido: number;
 }
 
 export async function atualizarConfiguracoes(input: ConfiguracoesInput): Promise<void> {

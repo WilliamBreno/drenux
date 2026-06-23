@@ -106,7 +106,15 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
       </div>
 
       <div className="mt-3 flex items-center justify-between border-t border-tinta/10 pt-3 text-sm">
-        <span className="text-tinta-suave">Retirada: {formatarData(pedido.data_retirada)}</span>
+        <div>
+          <span className="text-tinta-suave">
+            {pedido.modo_entrega === 'entrega' ? '🛵 Entrega' : '🏪 Retirada'}
+          </span>
+          {pedido.modo_entrega === 'entrega' && pedido.endereco_entrega && (
+            <p className="mt-0.5 text-xs text-tinta-suave">{pedido.endereco_entrega}</p>
+          )}
+          <p className="mt-0.5 text-xs text-tinta-suave">{formatarData(pedido.data_retirada)}</p>
+        </div>
         <span className="font-carimbo font-semibold text-tinta">
           R$ {pedido.total.toFixed(2).replace('.', ',')}
         </span>

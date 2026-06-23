@@ -23,10 +23,12 @@ type itemPedidoRequest struct {
 }
 
 type pedidoRequest struct {
-	ClienteNome     string               `json:"cliente_nome" binding:"required"`
-	ClienteTelefone string               `json:"cliente_telefone" binding:"required"`
-	DataRetirada    time.Time            `json:"data_retirada" binding:"required"`
-	Itens           []itemPedidoRequest  `json:"itens" binding:"required,min=1,dive"`
+	ClienteNome     string              `json:"cliente_nome" binding:"required"`
+	ClienteTelefone string              `json:"cliente_telefone" binding:"required"`
+	DataRetirada    time.Time           `json:"data_retirada" binding:"required"`
+	ModoEntrega     string              `json:"modo_entrega"`
+	EnderecoEntrega string              `json:"endereco_entrega"`
+	Itens           []itemPedidoRequest `json:"itens" binding:"required,min=1,dive"`
 }
 
 // Criar atende POST /lojas/:slug/pedidos — rota pública. O cliente final
@@ -53,6 +55,8 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 		ClienteNome:     req.ClienteNome,
 		ClienteTelefone: req.ClienteTelefone,
 		DataRetirada:    req.DataRetirada,
+		ModoEntrega:     req.ModoEntrega,
+		EnderecoEntrega: req.EnderecoEntrega,
 		Itens:           itensInput,
 	})
 	if err != nil {

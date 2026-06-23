@@ -13,7 +13,7 @@ import (
 
 type ItemPedidoInput struct {
 	ProdutoID  uint
-	VariacaoID *uint // nil = produto sem variação
+	VariacaoID *uint
 	Quantidade int
 }
 
@@ -21,6 +21,8 @@ type PedidoInput struct {
 	ClienteNome     string
 	ClienteTelefone string
 	DataRetirada    time.Time
+	ModoEntrega     string
+	EnderecoEntrega string
 	Itens           []ItemPedidoInput
 }
 
@@ -48,6 +50,22 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 		return nil, errors.New("o pedido precisa ter pelo menos um item")
 	}
 
+	// Valida modo de entrega
+	modoEntrega := domain.ModoEntregaRetirada
+	if input.ModoEntrega == string(domain.ModoEntregaEntrega) {
+		if !loja.AceitaEntrega {
+			return nil, errors.New("essa loja não aceita entrega em domicílio")
+		}
+		if input.EnderecoEntrega == "" {
+			return nil, errors.New("endereço de entrega é obrigatório")
+		}
+		modoEntrega = domain.ModoEntregaEntrega
+	} else {
+		if !loja.AceitaRetirada {
+			return nil, errors.New("essa loja não aceita retirada — só entrega em domicílio")
+		}
+	}
+
 	// Validações da loja antes de aceitar o pedido
 	if err := validarLojaAberta(loja); err != nil {
 		return nil, err
@@ -62,6 +80,8 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 		ClienteTelefone: input.ClienteTelefone,
 		DataRetirada:    input.DataRetirada,
 		Status:          domain.StatusAguardandoPagamento,
+		ModoEntrega:     modoEntrega,
+		EnderecoEntrega: input.EnderecoEntrega,
 	}
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
@@ -133,6 +153,22 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 		}
 
 		pedido.Total = total
+
+		// Soma a taxa de entrega fixa, se aplicável
+		if modoEntrega == domain.ModoEntregaEntrega &&
+			loja.TaxaEntregaTipo == "fixa" &&
+			loja.TaxaEntregaValor > 0 {
+			pedido.Total += loja.TaxaEntregaValor
+		}
+
+		// Valida valor mínimo de pedido (sobre o subtotal, sem taxa de entrega)
+		if loja.ValorMinimoPedido > 0 && total < loja.ValorMinimoPedido {
+			return fmt.Errorf(
+				"pedido mínimo de R$ %.2f — seu carrinho está com R$ %.2f",
+				loja.ValorMinimoPedido, total,
+			)
+		}
+
 		pedido.Itens = itens
 
 		if err := pedidoRepo.Criar(&pedido); err != nil {

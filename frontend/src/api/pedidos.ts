@@ -11,6 +11,8 @@ interface CriarPedidoInput {
   cliente_nome: string;
   cliente_telefone: string;
   data_retirada: string;
+  modo_entrega?: string;
+  endereco_entrega?: string;
   itens: ItemPedidoInput[];
 }
 

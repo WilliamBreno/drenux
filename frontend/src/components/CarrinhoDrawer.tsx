@@ -9,6 +9,11 @@ interface Props {
   slug: string;
   modoPedido: 'imediato' | 'agendado';
   antecedenciaMinimaHoras: number;
+  aceitaRetirada: boolean;
+  aceitaEntrega: boolean;
+  taxaEntregaTipo: string;
+  taxaEntregaValor: number;
+  valorMinimoPedido: number;
 }
 
 function formatarDataLocal(data: Date): string {
@@ -56,7 +61,7 @@ function normalizarTelefone(valor: string): string {
   return digitos.startsWith('55') ? digitos : `55${digitos}`;
 }
 
-export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenciaMinimaHoras }: Props) {
+export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenciaMinimaHoras, aceitaRetirada, aceitaEntrega, taxaEntregaTipo, taxaEntregaValor, valorMinimoPedido }: Props) {
   const itens = useCartStore((state) => state.itens);
   const total = useCartStore((state) => state.total());
   const alterarQuantidade = useCartStore((state) => state.alterarQuantidade);
@@ -67,10 +72,17 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
   const [telefone, setTelefone] = useState('');
   const [data, setData] = useState('');
   const [hora, setHora] = useState('');
+  const [modoEntrega, setModoEntrega] = useState<'retirada' | 'entrega'>(
+    aceitaRetirada ? 'retirada' : 'entrega'
+  );
+  const [endereco, setEndereco] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   if (!aberto) return null;
+
+  const taxaEntrega = modoEntrega === 'entrega' && taxaEntregaTipo === 'fixa' ? taxaEntregaValor : 0;
+  const totalComEntrega = total + taxaEntrega;
 
   // Quando o cliente muda a data, recalcula a hora mínima e reseta o
   // campo de hora se o valor atual ficou abaixo do novo mínimo.
@@ -87,24 +99,18 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
       setErro('Preenche nome e WhatsApp.');
       return;
     }
+    if (modoEntrega === 'entrega' && !endereco.trim()) {
+      setErro('Preenche o endereço de entrega.');
+      return;
+    }
     if (modoPedido === 'agendado') {
-      if (!data) {
-        setErro('Escolhe a data de retirada.');
-        return;
-      }
-      if (!hora) {
-        setErro('Escolhe a hora de retirada.');
-        return;
-      }
-
-      // Valida se a data+hora escolhida respeita a antecedência mínima
+      if (!data) { setErro('Escolhe a data de retirada.'); return; }
+      if (!hora) { setErro('Escolhe a hora.'); return; }
       const escolhida = new Date(`${data}T${hora}:00`);
       const minimo = new Date(Date.now() + antecedenciaMinimaHoras * 60 * 60 * 1000);
       if (escolhida < minimo) {
         const horaMin = horaMinima(data, antecedenciaMinimaHoras);
-        setErro(
-          `Horário inválido — essa loja exige pelo menos ${antecedenciaMinimaHoras}h de antecedência. Escolhe a partir das ${horaMin}.`
-        );
+        setErro(`Horário inválido — essa loja exige pelo menos ${antecedenciaMinimaHoras}h de antecedência. Escolhe a partir das ${horaMin}.`);
         setHora(horaMin);
         return;
       }
@@ -114,17 +120,16 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
     setErro(null);
 
     try {
-      // Modo imediato = data de retirada é agora (backend aceita qualquer
-      // data >= agora com tolerância de 1 minuto)
-      const dataRetirada =
-        modoPedido === 'agendado'
-          ? new Date(`${data}T${hora}:00`).toISOString()
-          : new Date().toISOString();
+      const dataRetirada = modoPedido === 'agendado'
+        ? new Date(`${data}T${hora}:00`).toISOString()
+        : new Date().toISOString();
 
       const pedido = await criarPedido(slug, {
         cliente_nome: nome.trim(),
         cliente_telefone: normalizarTelefone(telefone),
         data_retirada: dataRetirada,
+        modo_entrega: modoEntrega,
+        endereco_entrega: modoEntrega === 'entrega' ? endereco.trim() : undefined,
         itens: itens.map((item) => ({
           produto_id: item.produto.id,
           variacao_id: item.variacao?.id,
@@ -217,23 +222,47 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
             </ul>
           ) : (
             <div className="space-y-4">
+              {/* Seletor retirada / entrega — só aparece se a loja aceita os dois */}
+              {aceitaRetirada && aceitaEntrega && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModoEntrega('retirada')}
+                    className={`flex-1 rounded-full border-2 py-2 text-sm font-semibold transition ${modoEntrega === 'retirada' ? 'border-acento bg-acento text-superficie' : 'border-tinta/20 text-tinta'}`}
+                  >
+                    🏪 Retirada
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModoEntrega('entrega')}
+                    className={`flex-1 rounded-full border-2 py-2 text-sm font-semibold transition ${modoEntrega === 'entrega' ? 'border-acento bg-acento text-superficie' : 'border-tinta/20 text-tinta'}`}
+                  >
+                    🛵 Entrega
+                  </button>
+                </div>
+              )}
+
               <Campo label="Seu nome">
-                <input
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Maria Silva"
-                  className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
-                />
+                <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Maria Silva" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
               </Campo>
 
               <Campo label="WhatsApp">
-                <input
-                  value={telefone}
-                  onChange={(e) => setTelefone(e.target.value)}
-                  placeholder="(79) 99999-9999"
-                  className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
-                />
+                <input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(79) 99999-9999" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
               </Campo>
+
+              {modoEntrega === 'entrega' && (
+                <Campo label="Endereço de entrega">
+                  <input
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                    placeholder="Rua, número, bairro"
+                    className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+                  />
+                  {taxaEntregaTipo === 'combinado' && (
+                    <p className="mt-1 text-xs text-tinta-suave">Taxa de entrega a combinar com a loja.</p>
+                  )}
+                </Campo>
+              )}
 
               {modoPedido === 'agendado' && (
                 <div className="flex gap-3">
@@ -269,21 +298,46 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
         </div>
 
         <div className="space-y-3 border-t border-tinta/10 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <span className="text-tinta-suave">Total</span>
-            <span className="font-carimbo text-lg font-semibold text-tinta">
-              R$ {total.toFixed(2).replace('.', ',')}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-tinta-suave">Subtotal</span>
+              <span className="text-tinta">R$ {total.toFixed(2).replace('.', ',')}</span>
+            </div>
+            {modoEntrega === 'entrega' && taxaEntregaTipo === 'fixa' && taxaEntregaValor > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-tinta-suave">Taxa de entrega</span>
+                <span className="text-tinta">R$ {taxaEntregaValor.toFixed(2).replace('.', ',')}</span>
+              </div>
+            )}
+            {modoEntrega === 'entrega' && taxaEntregaTipo === 'combinado' && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-tinta-suave">Taxa de entrega</span>
+                <span className="text-tinta-suave italic">a combinar</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-tinta/10 pt-2">
+              <span className="text-tinta-suave">Total</span>
+              <span className="font-carimbo text-lg font-semibold text-tinta">
+                R$ {totalComEntrega.toFixed(2).replace('.', ',')}
+              </span>
+            </div>
           </div>
 
           {etapa === 'carrinho' ? (
-            <button
-              onClick={() => setEtapa('dados')}
-              disabled={itens.length === 0}
-              className="w-full rounded-full bg-acento py-3 font-semibold text-superficie transition disabled:opacity-40"
-            >
-              Continuar
-            </button>
+            <>
+              {valorMinimoPedido > 0 && total < valorMinimoPedido && (
+                <p className="text-center text-xs text-acento">
+                  Pedido mínimo de R$ {valorMinimoPedido.toFixed(2).replace('.', ',')} — faltam R$ {(valorMinimoPedido - total).toFixed(2).replace('.', ',')}
+                </p>
+              )}
+              <button
+                onClick={() => setEtapa('dados')}
+                disabled={itens.length === 0 || (valorMinimoPedido > 0 && total < valorMinimoPedido)}
+                className="w-full rounded-full bg-acento py-3 font-semibold text-superficie transition disabled:opacity-40"
+              >
+                Continuar
+              </button>
+            </>
           ) : (
             <div className="flex gap-3">
               <button

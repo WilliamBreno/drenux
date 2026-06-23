@@ -116,7 +116,7 @@ export function CardapioPublico() {
         </h1>
         {data.loja.horario_abertura && data.loja.horario_fechamento && (
           <p className="mt-1 font-carimbo text-xs uppercase tracking-[0.2em] text-superficie/70">
-            Aberto das: {data.loja.horario_abertura} – {data.loja.horario_fechamento}
+            {data.loja.horario_abertura} – {data.loja.horario_fechamento}
           </p>
         )}
       </header>
@@ -145,6 +145,11 @@ export function CardapioPublico() {
         slug={slug!}
         modoPedido={data.loja.modo_pedido}
         antecedenciaMinimaHoras={data.loja.antecedencia_minima_horas}
+        aceitaRetirada={data.loja.aceita_retirada}
+        aceitaEntrega={data.loja.aceita_entrega}
+        taxaEntregaTipo={data.loja.taxa_entrega_tipo}
+        taxaEntregaValor={data.loja.taxa_entrega_valor}
+        valorMinimoPedido={data.loja.valor_minimo_pedido}
       />
     </div>
   );
