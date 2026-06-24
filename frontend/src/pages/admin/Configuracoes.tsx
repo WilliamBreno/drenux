@@ -178,43 +178,7 @@ export function Configuracoes() {
             </div>
             <label className="cursor-pointer rounded-full border border-tinta/20 px-4 py-2 text-sm font-semibold text-tinta hover:border-acento">
               {enviandoLogo ? 'Enviando...' : logoUrl ? 'Trocar imagem' : 'Enviar logo'}
-              <input type="file" accept="image/*" onChange={selecionarLogo} disabled={enviandoLogo} className="hidden" />
-            </label>
-          </div>
-          {erroLogo && <p className="mt-2 text-sm text-acento">{erroLogo}</p>}
-        </div>
-
-        {/* WhatsApp */}
-        <Campo label="WhatsApp pra receber avisos de pedido">
-          <input
-            required
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="5579999999999"
-            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
-          />
-          <span className="mt-1 block text-xs text-tinta-suave">DDI + DDD + número (ex: 5579999999999).</span>
-        </Campo>
-
-        {/* Modo de pedido */}
-        <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Modo de pedido</p>
-          <div className="flex flex-col gap-2">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="radio" name="modo" value="imediato" checked={modoPedido === 'imediato'} onChange={() => setModoPedido('imediato')} className="mt-0.5 accent-acento" />
-              <div>
-                <p className="text-sm font-medium text-tinta">Entrega imediata</p>
-                <p className="text-xs text-tinta-suave">Cliente faz o pedido sem agendar data — ideal pra produtos já prontos.</p>
-              </div>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input type="radio" name="modo" value="agendado" checked={modoPedido === 'agendado'} onChange={() => setModoPedido('agendado')} className="mt-0.5 accent-acento" />
-              <div>
-                <p className="text-sm font-medium text-tinta">Retirada agendada</p>
-                <p className="text-xs text-tinta-suave">Cliente escolhe a data com antecedência mínima — ideal pra encomendas.</p>
-              </div>
-            </label>
-          </div>
+< truncated lines 181-217 >
           {modoPedido === 'agendado' && (
             <Campo label="Antecedência mínima (horas)">
               <input
@@ -232,14 +196,14 @@ export function Configuracoes() {
         {/* Horário de funcionamento */}
         <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Horário de funcionamento <span className="normal-case font-normal">(opcional)</span></p>
-          <div className="flex gap-3">
-            <Campo label="Abre" className="flex-1">
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Abre">
               <input type="time" value={abertura} onChange={(e) => setAbertura(e.target.value)}
-                className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento" />
+                className="w-full rounded-lg border border-tinta/20 bg-superficie px-2 py-1.5 text-sm text-tinta outline-none focus:border-acento sm:px-3 sm:py-2" />
             </Campo>
-            <Campo label="Fecha" className="flex-1">
+            <Campo label="Fecha">
               <input type="time" value={fechamento} onChange={(e) => setFechamento(e.target.value)}
-                className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento" />
+                className="w-full rounded-lg border border-tinta/20 bg-superficie px-2 py-1.5 text-sm text-tinta outline-none focus:border-acento sm:px-3 sm:py-2" />
             </Campo>
           </div>
           <Campo label="Parar de aceitar pedidos antes de fechar">
@@ -249,7 +213,7 @@ export function Configuracoes() {
               className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento"
             >
               {MARGENS.map((m) => (
-                <option key={m} value={m}>{m === 0 ? 'No horário de fechamento' : `${m} minutos antes`}</option>
+                <option key={m} value={m}>{m === 0 ? 'No horário de fechamento' : `${m} min antes`}</option>
               ))}
             </select>
           </Campo>
@@ -302,7 +266,7 @@ export function Configuracoes() {
                   </div>
                 </label>
                 {taxaTipo === 'fixa' && (
-                  <Campo label="Valor da entrega (R$)" className="ml-6">
+                  <Campo label="Valor da entrega (R$)">
                     <input
                       type="number"
                       step="0.50"
@@ -351,7 +315,7 @@ export function Configuracoes() {
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">
             Tema do cardápio
           </p>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-4 gap-2">
             {TEMAS.map((t) => (
               <button
                 key={t.id}
@@ -362,11 +326,11 @@ export function Configuracoes() {
                 }`}
               >
                 <div
-                  className="mb-1.5 h-8 w-full rounded-lg"
+                  className="mb-1.5 h-6 w-full rounded-lg"
                   style={{ background: t.acento }}
                 />
                 <div
-                  className="mb-1 h-2 w-full rounded"
+                  className="mb-1 h-1.5 w-full rounded"
                   style={{ background: t.fundo }}
                 />
                 <p className="truncate text-xs font-medium text-tinta">{t.nome}</p>
