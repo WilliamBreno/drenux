@@ -46,7 +46,7 @@ type Loja struct {
 
 	// Tema visual do cardápio público — controlado pelo dono no painel.
 	// Padrão: "kraft" (a paleta atual de papel pardo + vermelho toldo).
-	Tema string `gorm:"size:30;default:'kraft'" json:"tema"`
+	//Tema string `gorm:"size:30;default:'kraft'" json:"tema"`
 
 	// Tema visual do cardápio público — não afeta o painel admin.
 	// Valores válidos: kraft, oceano, floresta, rosa, noite, carvao, brasa, hortela
