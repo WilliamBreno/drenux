@@ -141,7 +141,6 @@ export function Configuracoes() {
     <div className="space-y-8">
       <h1 className="font-display text-2xl tracking-wide text-tinta">Configurações</h1>
 
-      {/* Pagamento */}
       <section className="rounded-2xl bg-superficie p-5 shadow-sm">
         <h2 className="font-display text-lg tracking-wide text-tinta">Pagamento</h2>
         <p className="mt-1 text-sm text-tinta-suave">
@@ -165,7 +164,6 @@ export function Configuracoes() {
       <form onSubmit={salvar} className="space-y-6 rounded-2xl bg-superficie p-5 shadow-sm">
         <h2 className="font-display text-lg tracking-wide text-tinta">Loja</h2>
 
-        {/* Logo */}
         <div>
           <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-tinta-suave">Logo da loja</span>
           <div className="flex items-center gap-4">
@@ -178,7 +176,41 @@ export function Configuracoes() {
             </div>
             <label className="cursor-pointer rounded-full border border-tinta/20 px-4 py-2 text-sm font-semibold text-tinta hover:border-acento">
               {enviandoLogo ? 'Enviando...' : logoUrl ? 'Trocar imagem' : 'Enviar logo'}
-< truncated lines 181-217 >
+              <input type="file" accept="image/*" onChange={selecionarLogo} disabled={enviandoLogo} className="hidden" />
+            </label>
+          </div>
+          {erroLogo && <p className="mt-2 text-sm text-acento">{erroLogo}</p>}
+        </div>
+
+        <Campo label="WhatsApp pra receber avisos de pedido">
+          <input
+            required
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="5579999999999"
+            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+          />
+          <span className="mt-1 block text-xs text-tinta-suave">DDI + DDD + número (ex: 5579999999999).</span>
+        </Campo>
+
+        <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Modo de pedido</p>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="radio" name="modo" value="imediato" checked={modoPedido === 'imediato'} onChange={() => setModoPedido('imediato')} className="mt-0.5 accent-acento" />
+              <div>
+                <p className="text-sm font-medium text-tinta">Entrega imediata</p>
+                <p className="text-xs text-tinta-suave">Cliente faz o pedido sem agendar data — ideal pra produtos já prontos.</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="radio" name="modo" value="agendado" checked={modoPedido === 'agendado'} onChange={() => setModoPedido('agendado')} className="mt-0.5 accent-acento" />
+              <div>
+                <p className="text-sm font-medium text-tinta">Retirada agendada</p>
+                <p className="text-xs text-tinta-suave">Cliente escolhe a data com antecedência mínima — ideal pra encomendas.</p>
+              </div>
+            </label>
+          </div>
           {modoPedido === 'agendado' && (
             <Campo label="Antecedência mínima (horas)">
               <input
@@ -193,7 +225,6 @@ export function Configuracoes() {
           )}
         </div>
 
-        {/* Horário de funcionamento */}
         <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Horário de funcionamento <span className="normal-case font-normal">(opcional)</span></p>
           <div className="grid grid-cols-2 gap-2">
@@ -219,7 +250,6 @@ export function Configuracoes() {
           </Campo>
         </div>
 
-        {/* Pausar produção */}
         <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={pausado} onChange={(e) => setPausado(e.target.checked)} className="h-4 w-4 accent-acento" />
@@ -240,20 +270,16 @@ export function Configuracoes() {
           </p>
         </div>
 
-        {/* Modos de recebimento */}
         <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Modos de recebimento</p>
-
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={aceitaRetirada} onChange={(e) => setAceitaRetirada(e.target.checked)} className="h-4 w-4 accent-acento" />
             <span className="text-sm text-tinta">Retirada no local</span>
           </label>
-
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={aceitaEntrega} onChange={(e) => setAceitaEntrega(e.target.checked)} className="h-4 w-4 accent-acento" />
             <span className="text-sm text-tinta">Entrega em domicílio</span>
           </label>
-
           {aceitaEntrega && (
             <div className="space-y-3 pt-1">
               <p className="text-xs font-medium text-tinta-suave">Taxa de entrega</p>
@@ -288,13 +314,11 @@ export function Configuracoes() {
               </div>
             </div>
           )}
-
           {!aceitaRetirada && !aceitaEntrega && (
             <p className="text-xs text-acento">Ative pelo menos um modo de recebimento.</p>
           )}
         </div>
 
-        {/* Valor mínimo de pedido */}
         <Campo label="Pedido mínimo (R$)">
           <input
             type="number"
@@ -310,7 +334,6 @@ export function Configuracoes() {
           </span>
         </Campo>
 
-        {/* Seletor de tema */}
         <div className="space-y-3">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">
             Tema do cardápio
@@ -325,14 +348,8 @@ export function Configuracoes() {
                   tema === t.id ? 'border-acento' : 'border-tinta/10 hover:border-tinta/25'
                 }`}
               >
-                <div
-                  className="mb-1.5 h-6 w-full rounded-lg"
-                  style={{ background: t.acento }}
-                />
-                <div
-                  className="mb-1 h-1.5 w-full rounded"
-                  style={{ background: t.fundo }}
-                />
+                <div className="mb-1.5 h-6 w-full rounded-lg" style={{ background: t.acento }} />
+                <div className="mb-1 h-1.5 w-full rounded" style={{ background: t.fundo }} />
                 <p className="truncate text-xs font-medium text-tinta">{t.nome}</p>
               </button>
             ))}
