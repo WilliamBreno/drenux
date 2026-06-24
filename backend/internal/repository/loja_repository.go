@@ -55,6 +55,7 @@ type ConfiguracoesLoja struct {
 	TaxaEntregaTipo         string
 	TaxaEntregaValor        float64
 	ValorMinimoPedido       float64
+	Tema       string
 }
 
 // AtualizarConfiguracoes grava todos os campos editáveis da loja de uma vez.
@@ -74,7 +75,8 @@ func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLo
 		"taxa_entrega_tipo":         cfg.TaxaEntregaTipo,
 		"taxa_entrega_valor":        cfg.TaxaEntregaValor,
 		"valor_minimo_pedido":       cfg.ValorMinimoPedido,
-	}).Error
+		"tema":       cfg.Tema,
+	})
 }
 
 // BuscarPorSlug é usado pelo cardápio público — é assim que o cliente
