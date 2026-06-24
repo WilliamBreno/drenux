@@ -76,7 +76,7 @@ func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLo
 		"taxa_entrega_valor":        cfg.TaxaEntregaValor,
 		"valor_minimo_pedido":       cfg.ValorMinimoPedido,
 		"tema":       cfg.Tema,
-	})
+	}).Error
 }
 
 // BuscarPorSlug é usado pelo cardápio público — é assim que o cliente
