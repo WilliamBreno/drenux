@@ -125,3 +125,33 @@ export async function statusStripe(): Promise<{ stripe_conectado: boolean }> {
   const { data } = await api.get<{ stripe_conectado: boolean }>('/admin/stripe/status');
   return data;
 }
+
+// Cupons
+export interface CupomInput {
+  codigo: string;
+  tipo: 'percentual' | 'fixo';
+  valor: number;
+  ativo: boolean;
+  uso_maximo: number | null;
+  validade: string | null;
+  valor_minimo_pedido: number;
+}
+
+export async function listarCupons(): Promise<import('./types').Cupom[]> {
+  const { data } = await api.get('/admin/cupons');
+  return data;
+}
+
+export async function criarCupom(input: CupomInput): Promise<import('./types').Cupom> {
+  const { data } = await api.post('/admin/cupons', input);
+  return data;
+}
+
+export async function atualizarCupom(id: number, input: CupomInput): Promise<import('./types').Cupom> {
+  const { data } = await api.put(`/admin/cupons/${id}`, input);
+  return data;
+}
+
+export async function deletarCupom(id: number): Promise<void> {
+  await api.delete(`/admin/cupons/${id}`);
+}

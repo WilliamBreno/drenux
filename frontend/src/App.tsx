@@ -10,6 +10,7 @@ import { Dashboard } from './pages/admin/Dashboard';
 import { Produtos } from './pages/admin/Produtos';
 import { Categorias } from './pages/admin/Categorias';
 import { Pedidos } from './pages/admin/Pedidos';
+import { Cupons } from './pages/admin/Cupons';
 import { Configuracoes } from './pages/admin/Configuracoes';
 
 const queryClient = new QueryClient();
@@ -29,13 +30,11 @@ function App() {
               <Route path="produtos" element={<Produtos />} />
               <Route path="categorias" element={<Categorias />} />
               <Route path="pedidos" element={<Pedidos />} />
+              <Route path="cupons" element={<Cupons />} />
               <Route path="configuracoes" element={<Configuracoes />} />
             </Route>
           </Route>
 
-          {/* Rota pública por slug — React Router prioriza rotas
-              estáticas (/login, /admin) sobre essa dinâmica automaticamente,
-              então a ordem de declaração aqui não causa conflito. */}
           <Route path="/:slug" element={<CardapioPublico />} />
         </Routes>
       </BrowserRouter>

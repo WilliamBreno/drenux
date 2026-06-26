@@ -92,8 +92,25 @@ export interface ItemPedido {
   pedido_id: number;
   produto_id: number;
   produto_nome: string;
+  variacao_id: number | null;
+  variacao_nome: string;
   quantidade: number;
   preco_unit: number;
+}
+
+export interface Cupom {
+  id: number;
+  loja_id: number;
+  codigo: string;
+  tipo: 'percentual' | 'fixo';
+  valor: number;
+  ativo: boolean;
+  uso_maximo: number | null;
+  uso_atual: number;
+  validade: string | null;
+  valor_minimo_pedido: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Pedido {
@@ -106,6 +123,8 @@ export interface Pedido {
   total: number;
   modo_entrega: 'retirada' | 'entrega';
   endereco_entrega: string;
+  cupom_codigo: string;
+  desconto: number;
   itens: ItemPedido[];
   created_at: string;
   updated_at: string;

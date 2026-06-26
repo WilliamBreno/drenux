@@ -7,6 +7,7 @@ const links = [
   { to: '/admin/pedidos', label: 'Pedidos' },
   { to: '/admin/produtos', label: 'Produtos' },
   { to: '/admin/categorias', label: 'Categorias' },
+  { to: '/admin/cupons', label: 'Cupons' },
   { to: '/admin/configuracoes', label: 'Configurações' },
 ];
 

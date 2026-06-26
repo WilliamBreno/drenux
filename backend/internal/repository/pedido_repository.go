@@ -30,8 +30,19 @@ func (r *PedidoRepository) ListarPorLoja(lojaID uint) ([]domain.Pedido, error) {
 	return pedidos, nil
 }
 
-// BuscarPorID vem com os itens carregados — necessário pra montar a
-// sessão de checkout (cada item vira uma linha no Stripe).
+// ListarPorTelefone retorna os últimos pedidos pagos de um cliente
+// específico nessa loja. Usado pelo histórico público do cliente.
+func (r *PedidoRepository) ListarPorTelefone(lojaID uint, telefone string, limite int) ([]domain.Pedido, error) {
+	var pedidos []domain.Pedido
+	err := r.db.
+		Where("loja_id = ? AND cliente_telefone = ? AND status = ?",
+			lojaID, telefone, domain.StatusPago).
+		Preload("Itens").
+		Order("id desc").
+		Limit(limite).
+		Find(&pedidos).Error
+	return pedidos, err
+}
 func (r *PedidoRepository) BuscarPorID(id uint) (*domain.Pedido, error) {
 	var pedido domain.Pedido
 	if err := r.db.Preload("Itens").First(&pedido, id).Error; err != nil {

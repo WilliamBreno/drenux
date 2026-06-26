@@ -13,6 +13,7 @@ interface CriarPedidoInput {
   data_retirada: string;
   modo_entrega?: string;
   endereco_entrega?: string;
+  cupom_codigo?: string;
   itens: ItemPedidoInput[];
 }
 

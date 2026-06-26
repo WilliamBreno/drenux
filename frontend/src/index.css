@@ -76,3 +76,57 @@
   --color-acento:       0 121 107;
   --color-douro:        255 167 38;
 }
+
+[data-tema="preto"] {
+  --color-fundo:        13 13 13;
+  --color-superficie:   28 28 28;
+  --color-tinta:        242 242 242;
+  --color-tinta-suave:  160 160 160;
+  --color-acento:       232 184 109;
+  --color-douro:        232 184 109;
+}
+
+[data-tema="cinza"] {
+  --color-fundo:        236 236 236;
+  --color-superficie:   248 248 248;
+  --color-tinta:        26 26 26;
+  --color-tinta-suave:  107 107 107;
+  --color-acento:       64 64 64;
+  --color-douro:        144 144 144;
+}
+
+[data-tema="marinho"] {
+  --color-fundo:        232 238 244;
+  --color-superficie:   242 246 250;
+  --color-tinta:        10 22 40;
+  --color-tinta-suave:  74 96 128;
+  --color-acento:       27 58 107;
+  --color-douro:        212 168 67;
+}
+
+[data-tema="amarelo"] {
+  --color-fundo:        255 248 220;
+  --color-superficie:   255 254 240;
+  --color-tinta:        26 15 0;
+  --color-tinta-suave:  140 96 32;
+  --color-acento:       245 158 11;
+  --color-douro:        220 38 38;
+}
+
+[data-tema="vinho"] {
+  --color-fundo:        245 232 236;
+  --color-superficie:   250 240 243;
+  --color-tinta:        45 10 20;
+  --color-tinta-suave:  139 74 90;
+  --color-acento:       123 21 53;
+  --color-douro:        201 168 76;
+}
+
+[data-tema="pessego"] {
+  --color-fundo:        253 240 232;
+  --color-superficie:   255 247 242;
+  --color-tinta:        44 20 8;
+  --color-tinta-suave:  155 96 64;
+  --color-acento:       232 115 74;
+  --color-douro:        74 155 142;
+}

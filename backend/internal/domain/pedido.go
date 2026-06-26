@@ -31,6 +31,12 @@ type Pedido struct {
 	ModoEntrega     ModoEntrega `gorm:"size:20;default:'retirada'" json:"modo_entrega"`
 	EnderecoEntrega string      `gorm:"size:300" json:"endereco_entrega"`
 
+	// Cupom aplicado — snapshot do código no momento do pedido.
+	// Guardamos o código (não o ID) porque se o cupom for deletado depois,
+	// o histórico do pedido ainda faz sentido.
+	CupomCodigo string  `gorm:"size:30" json:"cupom_codigo"`
+	Desconto    float64 `gorm:"default:0" json:"desconto"`
+
 	StripeSessionID string       `gorm:"size:255" json:"-"`
 	Itens           []ItemPedido `gorm:"foreignKey:PedidoID" json:"itens"`
 	CreatedAt       time.Time    `json:"created_at"`

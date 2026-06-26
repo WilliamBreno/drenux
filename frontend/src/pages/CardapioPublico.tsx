@@ -6,6 +6,7 @@ import { ProdutoCard } from '../components/ProdutoCard';
 import { AbasCategorias } from '../components/AbasCategorias';
 import { CarrinhoFlutuante } from '../components/CarrinhoFlutuante';
 import { CarrinhoDrawer } from '../components/CarrinhoDrawer';
+import { HistoricoDrawer } from '../components/HistoricoDrawer';
 
 function lojaEstaAberta(loja: {
   horario_abertura: string;
@@ -42,6 +43,7 @@ export function CardapioPublico() {
   const pagamentoConfirmado = searchParams.get('pago') === '1';
   const [categoriaAtiva, setCategoriaAtiva] = useState<number | null>(null);
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cardapio', slug],
@@ -119,6 +121,12 @@ export function CardapioPublico() {
             {data.loja.horario_abertura} – {data.loja.horario_fechamento}
           </p>
         )}
+        <button
+          onClick={() => setHistoricoAberto(true)}
+          className="mt-3 rounded-full border border-superficie/30 px-4 py-1.5 text-xs font-medium text-superficie/80 hover:bg-superficie/10"
+        >
+          Meus pedidos
+        </button>
       </header>
 
       <div className="sticky top-0 z-10 bg-fundo/95 py-3 backdrop-blur">
@@ -150,6 +158,14 @@ export function CardapioPublico() {
         taxaEntregaTipo={data.loja.taxa_entrega_tipo}
         taxaEntregaValor={data.loja.taxa_entrega_valor}
         valorMinimoPedido={data.loja.valor_minimo_pedido}
+      />
+
+      <HistoricoDrawer
+        aberto={historicoAberto}
+        onFechar={() => setHistoricoAberto(false)}
+        slug={slug!}
+        produtos={data.produtos}
+        onAbrirCarrinho={() => setCarrinhoAberto(true)}
       />
     </div>
   );

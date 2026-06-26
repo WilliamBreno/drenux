@@ -18,6 +18,10 @@ func (s *LojaService) Buscar(lojaID uint) (*domain.Loja, error) {
 	return s.lojaRepo.BuscarPorID(lojaID)
 }
 
+func (s *LojaService) BuscarPorSlug(slug string) (*domain.Loja, error) {
+	return s.lojaRepo.BuscarPorSlug(slug)
+}
+
 func (s *LojaService) AtualizarConfiguracoes(lojaID uint, cfg repository.ConfiguracoesLoja) error {
 	return s.lojaRepo.AtualizarConfiguracoes(lojaID, cfg)
 }

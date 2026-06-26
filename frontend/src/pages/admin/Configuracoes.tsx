@@ -227,14 +227,14 @@ export function Configuracoes() {
 
         <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Horário de funcionamento <span className="normal-case font-normal">(opcional)</span></p>
-          <div className="grid grid-cols-2 gap-1">
-            <Campo label="Abre className="min-w-0 max-w-xs flex-1">
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Abre">
               <input type="time" value={abertura} onChange={(e) => setAbertura(e.target.value)}
-                className="w-full rounded-lg border border-tinta/20 bg-superficie px-1 py-1 text-sm text-tinta outline-none focus:border-acento sm:px-3 sm:py-2" />
+                className="w-full rounded-lg border border-tinta/20 bg-superficie px-2 py-1.5 text-sm text-tinta outline-none focus:border-acento sm:px-3 sm:py-2" />
             </Campo>
-            <Campo label="Fecha className="min-w-0 max-w-xs flex-1">
+            <Campo label="Fecha">
               <input type="time" value={fechamento} onChange={(e) => setFechamento(e.target.value)}
-                className="w-full rounded-lg border border-tinta/20 bg-superficie px-1 py-1 text-sm text-tinta outline-none focus:border-acento sm:px-3 sm:py-2" />
+                className="w-full rounded-lg border border-tinta/20 bg-superficie px-2 py-1.5 text-sm text-tinta outline-none focus:border-acento sm:px-3 sm:py-2" />
             </Campo>
           </div>
           <Campo label="Parar de aceitar pedidos antes de fechar">

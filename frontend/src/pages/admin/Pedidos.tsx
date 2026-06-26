@@ -114,6 +114,11 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
             <p className="mt-0.5 text-xs text-tinta-suave">{pedido.endereco_entrega}</p>
           )}
           <p className="mt-0.5 text-xs text-tinta-suave">{formatarData(pedido.data_retirada)}</p>
+          {pedido.cupom_codigo && (
+            <p className="mt-0.5 text-xs text-emerald-600">
+              Cupom {pedido.cupom_codigo} · -R$ {pedido.desconto.toFixed(2).replace('.', ',')}
+            </p>
+          )}
         </div>
         <span className="font-carimbo font-semibold text-tinta">
           R$ {pedido.total.toFixed(2).replace('.', ',')}

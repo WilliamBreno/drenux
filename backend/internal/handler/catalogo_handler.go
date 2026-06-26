@@ -2,21 +2,29 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
+	"github.com/WilliamBreno/cardapio-backend/internal/repository"
 	"github.com/WilliamBreno/cardapio-backend/internal/service"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type CatalogoHandler struct {
 	catalogoService *service.CatalogoService
+	lojaRepo        *repository.LojaRepository
+	pedidoRepo      *repository.PedidoRepository
 }
 
-func NewCatalogoHandler(catalogoService *service.CatalogoService) *CatalogoHandler {
-	return &CatalogoHandler{catalogoService: catalogoService}
+func NewCatalogoHandler(catalogoService *service.CatalogoService, db *gorm.DB) *CatalogoHandler {
+	return &CatalogoHandler{
+		catalogoService: catalogoService,
+		lojaRepo:        repository.NewLojaRepository(db),
+		pedidoRepo:      repository.NewPedidoRepository(db),
+	}
 }
 
 // BuscarCardapio atende GET /lojas/:slug — rota pública, sem autenticação.
-// É o que o cliente final acessa pra ver o cardápio de uma loja.
 func (h *CatalogoHandler) BuscarCardapio(c *gin.Context) {
 	slug := c.Param("slug")
 
@@ -48,4 +56,36 @@ func (h *CatalogoHandler) BuscarCardapio(c *gin.Context) {
 		"categorias": cardapio.Categorias,
 		"produtos":   cardapio.Produtos,
 	})
+}
+
+// BuscarHistorico atende GET /lojas/:slug/historico?telefone=5579... — público.
+// Retorna os últimos pedidos pagos de um cliente nessa loja, identificado
+// pelo número de WhatsApp. Sem conta, sem senha — o número é o identificador.
+func (h *CatalogoHandler) BuscarHistorico(c *gin.Context) {
+	slug := c.Param("slug")
+	telefone := strings.TrimSpace(c.Query("telefone"))
+
+	if telefone == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "informe o telefone"})
+		return
+	}
+	// Normaliza: garante que começa com 55
+	if !strings.HasPrefix(telefone, "55") {
+		telefone = "55" + telefone
+	}
+	telefone = strings.ReplaceAll(telefone, " ", "")
+
+	loja, err := h.lojaRepo.BuscarPorSlug(slug)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"erro": "loja não encontrada"})
+		return
+	}
+
+	pedidos, err := h.pedidoRepo.ListarPorTelefone(loja.ID, telefone, 10)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, pedidos)
 }

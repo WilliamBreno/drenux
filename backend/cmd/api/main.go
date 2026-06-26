@@ -37,6 +37,7 @@ func main() {
 		&domain.Categoria{},
 		&domain.Produto{},
 		&domain.VariacaoProduto{},
+		&domain.Cupom{},
 		&domain.Pedido{},
 		&domain.ItemPedido{},
 	); err != nil {
@@ -67,7 +68,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService)
 
 	catalogoService := service.NewCatalogoService(db)
-	catalogoHandler := handler.NewCatalogoHandler(catalogoService)
+	catalogoHandler := handler.NewCatalogoHandler(catalogoService, db)
 
 	categoriaService := service.NewCategoriaService(db)
 	categoriaHandler := handler.NewCategoriaHandler(categoriaService)
@@ -101,6 +102,9 @@ func main() {
 	lojaService := service.NewLojaService(db)
 	lojaHandler := handler.NewLojaHandler(lojaService)
 
+	cupomService := service.NewCupomService(db)
+	cupomHandler := handler.NewCupomHandler(cupomService)
+
 	relatorioService := service.NewRelatorioService(db, whatsappSender)
 	relatorioHandler := handler.NewRelatorioHandler(relatorioService, cfg.CronSecret)
 
@@ -110,7 +114,18 @@ func main() {
 	// Rotas públicas — sem autenticação. É como o cliente final acessa o
 	// cardápio e faz um pedido numa loja específica, pelo slug.
 	router.GET("/lojas/:slug", catalogoHandler.BuscarCardapio)
+	router.GET("/lojas/:slug/historico", catalogoHandler.BuscarHistorico)
 	router.POST("/lojas/:slug/pedidos", pedidoHandler.Criar)
+	router.POST("/lojas/:slug/cupons/validar", func(c *gin.Context) {
+		// Resolve o loja_id a partir do slug pra usar no handler
+		loja, err := lojaService.BuscarPorSlug(c.Param("slug"))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"erro": "loja não encontrada"})
+			return
+		}
+		c.Set("loja_id_publico", loja.ID)
+		cupomHandler.Validar(c)
+	})
 	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
 
 	// Webhook da Stripe — chamado pela Stripe, não por usuário. Validado
@@ -140,6 +155,11 @@ func main() {
 	admin.POST("/produtos", produtoHandler.Criar)
 	admin.PUT("/produtos/:id", produtoHandler.Atualizar)
 	admin.DELETE("/produtos/:id", produtoHandler.Deletar)
+
+	admin.GET("/cupons", cupomHandler.Listar)
+	admin.POST("/cupons", cupomHandler.Criar)
+	admin.PUT("/cupons/:id", cupomHandler.Atualizar)
+	admin.DELETE("/cupons/:id", cupomHandler.Deletar)
 
 	// Variações num sub-grupo separado pra evitar conflito com :id do produto.
 	// O Gin não permite :id e :produtoId no mesmo prefixo.

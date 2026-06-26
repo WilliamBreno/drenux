@@ -23,6 +23,7 @@ type PedidoInput struct {
 	DataRetirada    time.Time
 	ModoEntrega     string
 	EnderecoEntrega string
+	CupomCodigo     string
 	Itens           []ItemPedidoInput
 }
 
@@ -30,6 +31,7 @@ type PedidoService struct {
 	db         *gorm.DB
 	lojaRepo   *repository.LojaRepository
 	pedidoRepo *repository.PedidoRepository
+	cupomRepo  *repository.CupomRepository
 }
 
 func NewPedidoService(db *gorm.DB) *PedidoService {
@@ -37,6 +39,7 @@ func NewPedidoService(db *gorm.DB) *PedidoService {
 		db:         db,
 		lojaRepo:   repository.NewLojaRepository(db),
 		pedidoRepo: repository.NewPedidoRepository(db),
+		cupomRepo:  repository.NewCupomRepository(db),
 	}
 }
 
@@ -167,6 +170,48 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 				"pedido mínimo de R$ %.2f — seu carrinho está com R$ %.2f",
 				loja.ValorMinimoPedido, total,
 			)
+		}
+
+		// Aplica cupom de desconto, se informado
+		if input.CupomCodigo != "" {
+			cupomRepo := repository.NewCupomRepository(tx)
+			cupom, err := cupomRepo.BuscarPorCodigo(input.CupomCodigo, loja.ID)
+			if err != nil {
+				return errors.New("cupom não encontrado")
+			}
+			if !cupom.Ativo {
+				return errors.New("esse cupom não está mais ativo")
+			}
+			if cupom.Validade != nil && time.Now().After(*cupom.Validade) {
+				return errors.New("esse cupom expirou")
+			}
+			if cupom.UsoMaximo != nil && cupom.UsoAtual >= *cupom.UsoMaximo {
+				return errors.New("esse cupom atingiu o limite de usos")
+			}
+			if cupom.ValorMinimoPedido > 0 && total < cupom.ValorMinimoPedido {
+				return fmt.Errorf("pedido mínimo de R$ %.2f pra usar esse cupom", cupom.ValorMinimoPedido)
+			}
+
+			var desconto float64
+			if cupom.Tipo == domain.TipoCupomPercentual {
+				desconto = total * cupom.Valor / 100
+			} else {
+				desconto = cupom.Valor
+			}
+			if desconto > total {
+				desconto = total
+			}
+
+			pedido.CupomCodigo = cupom.Codigo
+			pedido.Desconto = desconto
+			pedido.Total -= desconto
+			if pedido.Total < 0 {
+				pedido.Total = 0
+			}
+
+			if err := cupomRepo.IncrementarUso(cupom.ID); err != nil {
+				return fmt.Errorf("erro ao registrar uso do cupom: %w", err)
+			}
 		}
 
 		pedido.Itens = itens

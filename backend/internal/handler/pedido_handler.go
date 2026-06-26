@@ -28,6 +28,7 @@ type pedidoRequest struct {
 	DataRetirada    time.Time           `json:"data_retirada" binding:"required"`
 	ModoEntrega     string              `json:"modo_entrega"`
 	EnderecoEntrega string              `json:"endereco_entrega"`
+	CupomCodigo     string              `json:"cupom_codigo"`
 	Itens           []itemPedidoRequest `json:"itens" binding:"required,min=1,dive"`
 }
 
@@ -57,6 +58,7 @@ func (h *PedidoHandler) Criar(c *gin.Context) {
 		DataRetirada:    req.DataRetirada,
 		ModoEntrega:     req.ModoEntrega,
 		EnderecoEntrega: req.EnderecoEntrega,
+		CupomCodigo:     req.CupomCodigo,
 		Itens:           itensInput,
 	})
 	if err != nil {

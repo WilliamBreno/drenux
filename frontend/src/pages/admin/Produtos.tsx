@@ -217,38 +217,41 @@ export function Produtos() {
         <ul className="space-y-3">
           {produtos.map((produto) => (
             <li key={produto.id} className="rounded-2xl bg-superficie shadow-sm">
-              {/* Linha principal do produto */}
-              <div className="flex items-center justify-between gap-3 p-4">
+              {/* Card do produto */}
+              <div className="p-4 space-y-2">
+                {/* Linha 1: foto + nome */}
                 <div className={`flex items-center gap-3 ${!produto.disponivel ? 'opacity-50' : ''}`}>
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-fundo">
                     {produto.foto_url ? <img src={logoMiniatura(produto.foto_url)} alt={produto.nome} className="h-full w-full object-cover" /> : <span className="font-display text-sm text-tinta/30">{produto.nome.charAt(0).toUpperCase()}</span>}
                   </div>
-                  <div>
-                    <p className="font-medium text-tinta">{produto.nome}</p>
+                  <p className="font-medium text-tinta truncate">{produto.nome}</p>
+                </div>
+
+                {/* Linha 2: preço + botões */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="font-carimbo text-sm text-tinta-suave">
                       R$ {produto.preco.toFixed(2).replace('.', ',')} · {produto.categoria?.nome ?? 'sem categoria'}
-                      {produto.variacoes && produto.variacoes.length > 0 && <span className="ml-1">· {produto.variacoes.length} variação(ões)</span>}
                     </p>
                     {produto.estoque_atual !== null && produto.variacoes?.length === 0 && (
-                      <p className={`text-xs mt-0.5 ${produto.estoque_atual === 0 ? 'text-acento' : 'text-tinta-suave'}`}>
+                      <p className={`text-xs ${produto.estoque_atual === 0 ? 'text-acento' : 'text-tinta-suave'}`}>
                         {produto.estoque_atual === 0 ? 'Esgotado' : `${produto.estoque_atual} em estoque`}
                       </p>
                     )}
                   </div>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={() => setProdutoExpandido(produtoExpandido === produto.id ? null : produto.id)}
-                    className="rounded-full border border-tinta/15 px-3 py-1 text-xs font-semibold text-tinta-suave hover:border-acento hover:text-acento"
-                  >
-                    Variações
-                  </button>
-                  <button onClick={() => alternarDisponibilidade(produto)} className={`rounded-full px-3 py-1 text-xs font-semibold ${produto.disponivel ? 'bg-douro/20 text-douro' : 'bg-tinta/10 text-tinta-suave'}`}>
-                    {produto.disponivel ? 'Disponível' : 'Pausado'}
-                  </button>
-                  <button onClick={() => abrirEdicao(produto)} className="text-sm font-medium text-acento hover:underline">Editar</button>
-                  <button onClick={() => { if (confirm(`Excluir "${produto.nome}"?`)) mutDeletar.mutate(produto.id); }} className="text-sm text-tinta-suave hover:text-acento">Excluir</button>
+                  <div className="grid grid-cols-2 gap-1 shrink-0">
+                    <button
+                      onClick={() => setProdutoExpandido(produtoExpandido === produto.id ? null : produto.id)}
+                      className="rounded-full border border-tinta/15 px-2 py-1 text-xs font-semibold text-tinta-suave hover:border-acento hover:text-acento"
+                    >
+                      Variações
+                    </button>
+                    <button onClick={() => alternarDisponibilidade(produto)} className={`rounded-full px-2 py-1 text-xs font-semibold ${produto.disponivel ? 'bg-douro/20 text-douro' : 'bg-tinta/10 text-tinta-suave'}`}>
+                      {produto.disponivel ? 'Disponível' : 'Pausado'}
+                    </button>
+                    <button onClick={() => abrirEdicao(produto)} className="rounded-full border border-acento/30 px-2 py-1 text-xs font-medium text-acento hover:bg-acento/5">Editar</button>
+                    <button onClick={() => { if (confirm(`Excluir "${produto.nome}"?`)) mutDeletar.mutate(produto.id); }} className="rounded-full border border-tinta/15 px-2 py-1 text-xs text-tinta-suave hover:text-acento">Excluir</button>
+                  </div>
                 </div>
               </div>
 

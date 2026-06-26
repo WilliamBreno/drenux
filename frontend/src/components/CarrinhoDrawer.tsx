@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCartStore } from '../store/cartStore';
 import { criarPedido, criarCheckout } from '../api/pedidos';
+import { validarCupom } from '../api/cupons';
 import { Campo } from './Campo';
 
 interface Props {
@@ -76,13 +77,44 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
     aceitaRetirada ? 'retirada' : 'entrega'
   );
   const [endereco, setEndereco] = useState('');
+  const [cupomCodigo, setCupomCodigo] = useState('');
+  const [desconto, setDesconto] = useState(0);
+  const [cupomMsg, setCupomMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [validandoCupom, setValidandoCupom] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   if (!aberto) return null;
 
   const taxaEntrega = modoEntrega === 'entrega' && taxaEntregaTipo === 'fixa' ? taxaEntregaValor : 0;
-  const totalComEntrega = total + taxaEntrega;
+  const totalComEntrega = total + taxaEntrega - desconto;
+
+  async function aplicarCupom() {
+    if (!cupomCodigo.trim()) return;
+    setValidandoCupom(true);
+    setCupomMsg(null);
+    try {
+      const resultado = await validarCupom(slug, cupomCodigo, total);
+      setDesconto(resultado.desconto);
+      setCupomMsg({
+        tipo: 'ok',
+        texto: resultado.tipo === 'percentual'
+          ? `Cupom aplicado — ${resultado.valor}% de desconto`
+          : `Cupom aplicado — R$ ${resultado.desconto.toFixed(2).replace('.', ',')} de desconto`,
+      });
+    } catch {
+      setDesconto(0);
+      setCupomMsg({ tipo: 'erro', texto: 'Cupom inválido ou não aplicável.' });
+    } finally {
+      setValidandoCupom(false);
+    }
+  }
+
+  function removerCupom() {
+    setCupomCodigo('');
+    setDesconto(0);
+    setCupomMsg(null);
+  }
 
   // Quando o cliente muda a data, recalcula a hora mínima e reseta o
   // campo de hora se o valor atual ficou abaixo do novo mínimo.
@@ -130,6 +162,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
         data_retirada: dataRetirada,
         modo_entrega: modoEntrega,
         endereco_entrega: modoEntrega === 'entrega' ? endereco.trim() : undefined,
+        cupom_codigo: desconto > 0 ? cupomCodigo : undefined,
         itens: itens.map((item) => ({
           produto_id: item.produto.id,
           variacao_id: item.variacao?.id,
@@ -299,6 +332,32 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
 
         <div className="space-y-3 border-t border-tinta/10 px-6 py-4">
           <div className="space-y-1">
+            {/* Campo de cupom */}
+            {etapa === 'carrinho' && (
+              <div className="mb-3 flex gap-2">
+                <input
+                  value={cupomCodigo}
+                  onChange={(e) => { setCupomCodigo(e.target.value.toUpperCase()); setDesconto(0); setCupomMsg(null); }}
+                  placeholder="Código do cupom"
+                  className="min-w-0 flex-1 rounded-lg border border-tinta/20 bg-fundo px-3 py-2 font-carimbo text-sm tracking-widest text-tinta outline-none focus:border-acento"
+                />
+                {desconto > 0 ? (
+                  <button onClick={removerCupom} className="rounded-lg border border-acento/30 px-3 py-2 text-xs text-acento">
+                    Remover
+                  </button>
+                ) : (
+                  <button onClick={aplicarCupom} disabled={validandoCupom || !cupomCodigo.trim()} className="rounded-lg bg-tinta px-3 py-2 text-xs font-semibold text-superficie disabled:opacity-40">
+                    {validandoCupom ? '...' : 'Aplicar'}
+                  </button>
+                )}
+              </div>
+            )}
+            {cupomMsg && (
+              <p className={`mb-2 text-xs ${cupomMsg.tipo === 'ok' ? 'text-emerald-600' : 'text-acento'}`}>
+                {cupomMsg.texto}
+              </p>
+            )}
+
             <div className="flex items-center justify-between text-sm">
               <span className="text-tinta-suave">Subtotal</span>
               <span className="text-tinta">R$ {total.toFixed(2).replace('.', ',')}</span>
@@ -313,6 +372,12 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
               <div className="flex items-center justify-between text-sm">
                 <span className="text-tinta-suave">Taxa de entrega</span>
                 <span className="text-tinta-suave italic">a combinar</span>
+              </div>
+            )}
+            {desconto > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-emerald-600">Desconto ({cupomCodigo})</span>
+                <span className="text-emerald-600">- R$ {desconto.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
             <div className="flex items-center justify-between border-t border-tinta/10 pt-2">
