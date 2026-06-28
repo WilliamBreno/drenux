@@ -74,8 +74,9 @@ func (h *LojaHandler) AtualizarConfiguracoes(c *gin.Context) {
 		AceitaEntrega:           req.AceitaEntrega,
 		TaxaEntregaTipo:         req.TaxaEntregaTipo,
 		TaxaEntregaValor:        req.TaxaEntregaValor,
-		ValorMinimoPedido:       req.ValorMinimoPedido,
-		
+		ValorMinimoPedido:       req.ValorMinimoPedido,	
+Tema:              req.Tema,
+
 	}
 
 	if err := h.lojaService.AtualizarConfiguracoes(lojaID, cfg); err != nil {
