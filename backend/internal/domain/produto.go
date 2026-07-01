@@ -15,8 +15,9 @@ type Produto struct {
 	Nome        string    `gorm:"size:100;not null" json:"nome"`
 	Descricao   string    `gorm:"type:text" json:"descricao"`
 	Preco       float64   `gorm:"not null" json:"preco"`
-	FotoURL     string    `gorm:"size:255" json:"foto_url"`
-	Disponivel  bool      `gorm:"default:true" json:"disponivel"`
+	FotoURL    string        `gorm:"size:255" json:"foto_url"` // mantido pra compatibilidade
+	Fotos      []FotoProduto `gorm:"foreignKey:ProdutoID;constraint:OnDelete:CASCADE" json:"fotos,omitempty"`
+	Disponivel bool          `gorm:"default:true" json:"disponivel"`
 
 	// Variações (ex: tamanhos, sabores). Quando vazio, o produto não tem
 	// opções — funciona igual ao comportamento anterior.

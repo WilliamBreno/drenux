@@ -21,6 +21,13 @@ export interface VariacaoProduto {
   ordem: number;
 }
 
+export interface FotoProduto {
+  id: number;
+  produto_id: number;
+  url: string;
+  ordem: number;
+}
+
 export interface Produto {
   id: number;
   loja_id: number;
@@ -30,12 +37,22 @@ export interface Produto {
   descricao: string;
   preco: number;
   foto_url: string;
+  fotos?: FotoProduto[];
   disponivel: boolean;
   estoque_atual: number | null;
   estoque_alerta: number | null;
   variacoes?: VariacaoProduto[];
   created_at: string;
   updated_at: string;
+}
+
+export interface DashboardData {
+  total_semana: number;
+  total_mes: number;
+  pedidos_semana: number;
+  receita_7_dias: { data: string; total: number }[];
+  receita_4_semanas: { semana: string; total: number }[];
+  top_produtos: { nome: string; quantidade: number }[];
 }
 
 export interface Loja {

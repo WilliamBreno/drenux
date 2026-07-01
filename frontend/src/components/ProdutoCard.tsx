@@ -11,8 +11,14 @@ export function ProdutoCard({ produto }: Props) {
   const variacoes = produto.variacoes?.filter((v) => v.disponivel) ?? [];
   const temVariacoes = variacoes.length > 0;
 
+  const fotos = produto.fotos && produto.fotos.length > 0
+    ? produto.fotos
+    : produto.foto_url
+      ? [{ id: 0, produto_id: produto.id, url: produto.foto_url, ordem: 0 }]
+      : [];
+
+  const [fotoAtiva, setFotoAtiva] = useState(0);
   const [variacaoSelecionada, setVariacaoSelecionada] = useState<VariacaoProduto | null>(
-    // Se só tem uma variação, já pré-seleciona
     variacoes.length === 1 ? variacoes[0] : null
   );
 
@@ -22,25 +28,40 @@ export function ProdutoCard({ produto }: Props) {
   function handleAdicionar() {
     if (!podeAdicionar) return;
     adicionar(produto, variacaoSelecionada ?? undefined);
-    // Reseta seleção só se tiver mais de uma variação
     if (variacoes.length > 1) setVariacaoSelecionada(null);
   }
 
   return (
     <div className="group flex gap-4 rounded-2xl bg-superficie p-4 shadow-[0_2px_0_0_rgba(43,33,24,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_rgba(43,33,24,0.08)]">
-      {produto.foto_url ? (
-        <img
-          src={produto.foto_url}
-          alt={produto.nome}
-          className="h-20 w-20 shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-tinta/25 bg-fundo">
-          <span className="font-display text-2xl text-tinta/40">
-            {produto.nome.charAt(0).toUpperCase()}
-          </span>
-        </div>
-      )}
+      {/* Foto com carrossel se tiver múltiplas */}
+      <div className="shrink-0">
+        {fotos.length > 0 ? (
+          <div className="relative">
+            <img
+              src={fotos[fotoAtiva]?.url}
+              alt={produto.nome}
+              className="h-20 w-20 rounded-full object-cover"
+            />
+            {fotos.length > 1 && (
+              <div className="mt-1 flex justify-center gap-1">
+                {fotos.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setFotoAtiva(i)}
+                    className={`h-1.5 w-1.5 rounded-full transition ${i === fotoAtiva ? 'bg-acento' : 'bg-tinta/20'}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-tinta/25 bg-fundo">
+            <span className="font-display text-2xl text-tinta/40">
+              {produto.nome.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-1 flex-col justify-between gap-2">
         <div>

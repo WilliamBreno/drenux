@@ -7,6 +7,7 @@ import { Login } from './pages/Login';
 import { Cadastro } from './pages/Cadastro';
 import { RotaProtegida } from './components/RotaProtegida';
 import { Dashboard } from './pages/admin/Dashboard';
+import { Inicio } from './pages/admin/Inicio';
 import { Produtos } from './pages/admin/Produtos';
 import { Categorias } from './pages/admin/Categorias';
 import { Pedidos } from './pages/admin/Pedidos';
@@ -26,7 +27,8 @@ function App() {
 
           <Route element={<RotaProtegida />}>
             <Route path="/admin" element={<Dashboard />}>
-              <Route index element={<Pedidos />} />
+              <Route index element={<Inicio />} />
+              <Route path="inicio" element={<Inicio />} />
               <Route path="produtos" element={<Produtos />} />
               <Route path="categorias" element={<Categorias />} />
               <Route path="pedidos" element={<Pedidos />} />

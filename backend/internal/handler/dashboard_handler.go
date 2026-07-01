@@ -1,0 +1,108 @@
+package handler
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/WilliamBreno/cardapio-backend/internal/domain"
+	"github.com/WilliamBreno/cardapio-backend/internal/repository"
+	"github.com/WilliamBreno/cardapio-backend/internal/service"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+type DashboardHandler struct {
+	dashboardService *service.DashboardService
+}
+
+func NewDashboardHandler(dashboardService *service.DashboardService) *DashboardHandler {
+	return &DashboardHandler{dashboardService: dashboardService}
+}
+
+func (h *DashboardHandler) Dados(c *gin.Context) {
+	lojaID := c.GetUint("loja_id")
+	data, err := h.dashboardService.BuscarDados(lojaID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, data)
+}
+
+// ─── Fotos de Produto ─────────────────────────────────────────────────────────
+
+type FotoHandler struct {
+	fotoRepo    *repository.FotoRepository
+	produtoRepo *repository.ProdutoRepository
+}
+
+func NewFotoHandler(db *gorm.DB) *FotoHandler {
+	return &FotoHandler{
+		fotoRepo:    repository.NewFotoRepository(db),
+		produtoRepo: repository.NewProdutoRepository(db),
+	}
+}
+
+func (h *FotoHandler) validarDono(lojaID, produtoID uint) bool {
+	produto, err := h.produtoRepo.BuscarPorID(produtoID)
+	return err == nil && produto.LojaID == lojaID
+}
+
+func (h *FotoHandler) Adicionar(c *gin.Context) {
+	lojaID := c.GetUint("loja_id")
+	produtoID, err := strconv.ParseUint(c.Param("produtoId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "produto_id inválido"})
+		return
+	}
+	if !h.validarDono(lojaID, uint(produtoID)) {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "produto não encontrado"})
+		return
+	}
+
+	var req struct {
+		URL   string `json:"url" binding:"required"`
+		Ordem int    `json:"ordem"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	foto := domain.FotoProduto{
+		ProdutoID: uint(produtoID),
+		URL:       req.URL,
+		Ordem:     req.Ordem,
+	}
+	if err := h.fotoRepo.Adicionar(&foto); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, foto)
+}
+
+func (h *FotoHandler) Deletar(c *gin.Context) {
+	lojaID := c.GetUint("loja_id")
+	produtoID, err := strconv.ParseUint(c.Param("produtoId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "produto_id inválido"})
+		return
+	}
+	fotoID, err := strconv.ParseUint(c.Param("fotoId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "foto_id inválido"})
+		return
+	}
+	if !h.validarDono(lojaID, uint(produtoID)) {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "produto não encontrado"})
+		return
+	}
+
+	if err := h.fotoRepo.Deletar(uint(fotoID), uint(produtoID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

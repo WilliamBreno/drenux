@@ -1,16 +1,10 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  listarProdutos,
-  criarProduto,
-  atualizarProduto,
-  deletarProduto,
-  listarCategorias,
-  criarVariacao,
-  atualizarVariacao,
-  deletarVariacao,
-  type ProdutoInput,
-  type VariacaoInput,
+  listarProdutos, criarProduto, atualizarProduto, deletarProduto,
+  listarCategorias, criarVariacao, atualizarVariacao, deletarVariacao,
+  adicionarFoto, deletarFoto,
+  type ProdutoInput, type VariacaoInput,
 } from '../../api/admin';
 import type { Produto, VariacaoProduto } from '../../api/types';
 import { Campo } from '../../components/Campo';
@@ -135,7 +129,32 @@ export function Produtos() {
     else { mutCriarVar.mutate({ pid: produtoId, input: formVariacao }); }
   }
 
+  // Fotos
+  const [produtoFotos, setProdutoFotos] = useState<number | null>(null);
+  const [enviandoFotoProduto, setEnviandoFotoProduto] = useState(false);
+
   const salvando = mutCriar.isPending || mutAtualizar.isPending;
+
+  async function adicionarFotoProduto(produtoId: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    if (!arquivo) return;
+    setEnviandoFotoProduto(true);
+    try {
+      const url = await enviarImagem(arquivo);
+      const produto = produtos?.find(p => p.id === produtoId);
+      const ordem = produto?.fotos?.length ?? 0;
+      await adicionarFoto(produtoId, url, ordem);
+      invalidar();
+    } finally {
+      setEnviandoFotoProduto(false);
+    }
+  }
+
+  async function removerFotoProduto(produtoId: number, fotoId: number) {
+    if (!confirm('Remover esta foto?')) return;
+    await deletarFoto(produtoId, fotoId);
+    invalidar();
+  }
 
   return (
     <div className="space-y-6">
@@ -241,6 +260,12 @@ export function Produtos() {
                   </div>
                   <div className="grid grid-cols-2 gap-1 shrink-0">
                     <button
+                      onClick={() => setProdutoFotos(produtoFotos === produto.id ? null : produto.id)}
+                      className="rounded-full border border-tinta/15 px-2 py-1 text-xs font-semibold text-tinta-suave hover:border-acento hover:text-acento"
+                    >
+                      Fotos {produto.fotos && produto.fotos.length > 0 && `(${produto.fotos.length})`}
+                    </button>
+                    <button
                       onClick={() => setProdutoExpandido(produtoExpandido === produto.id ? null : produto.id)}
                       className="rounded-full border border-tinta/15 px-2 py-1 text-xs font-semibold text-tinta-suave hover:border-acento hover:text-acento"
                     >
@@ -250,12 +275,45 @@ export function Produtos() {
                       {produto.disponivel ? 'Disponível' : 'Pausado'}
                     </button>
                     <button onClick={() => abrirEdicao(produto)} className="rounded-full border border-acento/30 px-2 py-1 text-xs font-medium text-acento hover:bg-acento/5">Editar</button>
-                    <button onClick={() => { if (confirm(`Excluir "${produto.nome}"?`)) mutDeletar.mutate(produto.id); }} className="rounded-full border border-tinta/15 px-2 py-1 text-xs text-tinta-suave hover:text-acento">Excluir</button>
+                    <button onClick={() => { if (confirm(`Excluir "${produto.nome}"?`)) mutDeletar.mutate(produto.id); }} className="rounded-full border border-tinta/15 px-2 py-1 text-xs text-tinta-suave hover:text-acento col-span-2">Excluir</button>
                   </div>
                 </div>
               </div>
 
-              {/* Painel de variações */}
+              {/* Painel de fotos */}
+              {produtoFotos === produto.id && (
+                <div className="border-t border-tinta/10 px-4 pb-4 pt-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Galeria de fotos</p>
+                    <label className="cursor-pointer rounded-full bg-tinta px-3 py-1 text-xs font-semibold text-superficie">
+                      {enviandoFotoProduto ? 'Enviando...' : '+ Adicionar'}
+                      <input type="file" accept="image/*" className="hidden" disabled={enviandoFotoProduto}
+                        onChange={(e) => adicionarFotoProduto(produto.id, e)} />
+                    </label>
+                  </div>
+                  {produto.fotos && produto.fotos.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {produto.fotos.map((foto, i) => (
+                        <div key={foto.id} className="relative group">
+                          <img src={foto.url} alt={`Foto ${i + 1}`}
+                            className="h-16 w-16 rounded-xl object-cover" />
+                          <button
+                            onClick={() => removerFotoProduto(produto.id, foto.id)}
+                            className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-acento text-xs text-superficie group-hover:flex"
+                          >×</button>
+                          {i === 0 && (
+                            <span className="absolute bottom-0 left-0 right-0 rounded-b-xl bg-tinta/60 py-0.5 text-center text-xs text-superficie">
+                              Principal
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-tinta-suave">Nenhuma foto ainda. A primeira foto adicionada será a principal.</p>
+                  )}
+                </div>
+              )}
               {produtoExpandido === produto.id && (
                 <div className="border-t border-tinta/10 px-4 pb-4 pt-3 space-y-3">
                   <div className="flex items-center justify-between">

@@ -37,6 +37,7 @@ func main() {
 		&domain.Loja{},
 		&domain.Categoria{},
 		&domain.Produto{},
+		&domain.FotoProduto{},
 		&domain.VariacaoProduto{},
 		&domain.Cupom{},
 		&domain.Pedido{},
@@ -103,6 +104,10 @@ func main() {
 	lojaService := service.NewLojaService(db)
 	lojaHandler := handler.NewLojaHandler(lojaService)
 
+	dashboardService := service.NewDashboardService(db)
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
+	fotoHandler := handler.NewFotoHandler(db)
+
 	cupomService := service.NewCupomService(db)
 	cupomHandler := handler.NewCupomHandler(cupomService)
 
@@ -157,10 +162,15 @@ func main() {
 	admin.PUT("/produtos/:id", produtoHandler.Atualizar)
 	admin.DELETE("/produtos/:id", produtoHandler.Deletar)
 
+	admin.GET("/dashboard", dashboardHandler.Dados)
+
 	admin.GET("/cupons", cupomHandler.Listar)
 	admin.POST("/cupons", cupomHandler.Criar)
 	admin.PUT("/cupons/:id", cupomHandler.Atualizar)
 	admin.DELETE("/cupons/:id", cupomHandler.Deletar)
+
+	admin.POST("/fotos/:produtoId", fotoHandler.Adicionar)
+	admin.DELETE("/fotos/:produtoId/:fotoId", fotoHandler.Deletar)
 
 	// Variações num sub-grupo separado pra evitar conflito com :id do produto.
 	// O Gin não permite :id e :produtoId no mesmo prefixo.

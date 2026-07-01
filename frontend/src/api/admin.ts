@@ -115,6 +115,22 @@ export async function deletarVariacao(produtoId: number, variacaoId: number): Pr
   await api.delete(`/admin/variacoes/${produtoId}/${variacaoId}`);
 }
 
+// Dashboard
+export async function buscarDashboard(): Promise<import('./types').DashboardData> {
+  const { data } = await api.get('/admin/dashboard');
+  return data;
+}
+
+// Fotos de produto
+export async function adicionarFoto(produtoId: number, url: string, ordem: number): Promise<import('./types').FotoProduto> {
+  const { data } = await api.post(`/admin/fotos/${produtoId}`, { url, ordem });
+  return data;
+}
+
+export async function deletarFoto(produtoId: number, fotoId: number): Promise<void> {
+  await api.delete(`/admin/fotos/${produtoId}/${fotoId}`);
+}
+
 // Stripe
 export async function iniciarOnboardingStripe(): Promise<{ url: string }> {
   const { data } = await api.post<{ url: string }>('/admin/stripe/onboarding');

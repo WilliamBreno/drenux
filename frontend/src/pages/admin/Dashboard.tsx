@@ -4,6 +4,7 @@ import { buscarLoja } from '../../api/admin';
 import { useAuthStore } from '../../store/authStore';
 
 const links = [
+  { to: '/admin', label: 'Início' },
   { to: '/admin/pedidos', label: 'Pedidos' },
   { to: '/admin/produtos', label: 'Produtos' },
   { to: '/admin/categorias', label: 'Categorias' },
