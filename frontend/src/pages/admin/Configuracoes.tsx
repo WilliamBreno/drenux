@@ -232,15 +232,19 @@ export function Configuracoes() {
         {/* Horário de funcionamento */}
         <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Horário de funcionamento <span className="normal-case font-normal">(opcional)</span></p>
-          <div className="grid grid-cols-2 gap-4">
-            <Campo label="Abre">
-              <input type="time" value={abertura} onChange={(e) => setAbertura(e.target.value)}
-                className="w-full rounded-lg border border-tinta/20 bg-superficie px-2 py-1.5 text-sm text-tinta outline-none focus:border-acento" />
-            </Campo>
-            <Campo label="Fecha">
-              <input type="time" value={fechamento} onChange={(e) => setFechamento(e.target.value)}
-                className="w-full rounded-lg border border-tinta/20 bg-superficie px-2 py-1.5 text-sm text-tinta outline-none focus:border-acento" />
-            </Campo>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <Campo label="Abre">
+                <input type="time" value={abertura} onChange={(e) => setAbertura(e.target.value)}
+                  className="w-full min-w-0 rounded-lg border border-tinta/20 bg-superficie px-2 py-2 text-sm text-tinta outline-none focus:border-acento" />
+              </Campo>
+            </div>
+            <div className="min-w-0">
+              <Campo label="Fecha">
+                <input type="time" value={fechamento} onChange={(e) => setFechamento(e.target.value)}
+                  className="w-full min-w-0 rounded-lg border border-tinta/20 bg-superficie px-2 py-2 text-sm text-tinta outline-none focus:border-acento" />
+              </Campo>
+            </div>
           </div>
           <Campo label="Parar de aceitar pedidos antes de fechar">
             <select

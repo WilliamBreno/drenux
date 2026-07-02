@@ -20,6 +20,10 @@ export function Inicio() {
   if (isLoading) return <p className="text-tinta-suave">Carregando...</p>;
   if (!data) return null;
 
+  const receita7Dias = data.receita_7_dias ?? [];
+  const receita4Semanas = data.receita_4_semanas ?? [];
+  const topProdutos = data.top_produtos ?? [];
+
   return (
     <div className="space-y-6">
       <h1 className="font-display text-2xl tracking-wide text-tinta">Visão geral</h1>
@@ -50,11 +54,11 @@ export function Inicio() {
       {/* Gráfico de receita por dia */}
       <div className="rounded-2xl bg-superficie p-5 shadow-sm">
         <h2 className="mb-4 font-display text-base tracking-wide text-tinta">Receita — últimos 7 dias</h2>
-        {data.receita_7_dias.every((d) => d.total === 0) ? (
+        {receita7Dias.length === 0 || receita7Dias.every((d) => d.total === 0) ? (
           <p className="py-8 text-center text-sm text-tinta-suave">Nenhum pedido pago nos últimos 7 dias.</p>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={data.receita_7_dias} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <LineChart data={receita7Dias} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(43,33,24,0.08)" />
               <XAxis dataKey="data" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} width={55} />
@@ -75,11 +79,11 @@ export function Inicio() {
       {/* Gráfico semanal */}
       <div className="rounded-2xl bg-superficie p-5 shadow-sm">
         <h2 className="mb-4 font-display text-base tracking-wide text-tinta">Receita — últimas 4 semanas</h2>
-        {data.receita_4_semanas.every((s) => s.total === 0) ? (
+        {receita4Semanas.length === 0 || receita4Semanas.every((s) => s.total === 0) ? (
           <p className="py-8 text-center text-sm text-tinta-suave">Nenhum pedido pago nas últimas 4 semanas.</p>
         ) : (
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={data.receita_4_semanas} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <BarChart data={receita4Semanas} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(43,33,24,0.08)" />
               <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} width={55} />
@@ -91,12 +95,12 @@ export function Inicio() {
       </div>
 
       {/* Top produtos */}
-      {data.top_produtos.length > 0 && (
+      {topProdutos.length > 0 && (
         <div className="rounded-2xl bg-superficie p-5 shadow-sm">
           <h2 className="mb-4 font-display text-base tracking-wide text-tinta">Mais vendidos — últimos 30 dias</h2>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart
-              data={data.top_produtos}
+              data={topProdutos}
               layout="vertical"
               margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
             >
