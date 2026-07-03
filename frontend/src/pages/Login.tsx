@@ -36,7 +36,7 @@ export function Login() {
       >
         <div className="text-center">
           <h1 className="font-display text-2xl tracking-wide text-tinta">Entrar</h1>
-          <p className="mt-1 text-sm text-tinta-suave">Painel da sua loja no Cardápio Site</p>
+          <p className="mt-1 text-sm text-tinta-suave">Painel da sua loja no Drenux</p>
         </div>
 
         <Campo label="Email">
@@ -58,6 +58,12 @@ export function Login() {
             className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
           />
         </Campo>
+
+        <div className="text-right">
+          <Link to="/esqueci-senha" className="text-sm text-tinta-suave hover:text-acento">
+            Esqueceu a senha?
+          </Link>
+        </div>
 
         {erro && <p className="text-sm text-acento">{erro}</p>}
 

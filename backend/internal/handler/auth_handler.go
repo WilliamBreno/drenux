@@ -63,3 +63,39 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
+type esqueciSenhaRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+func (h *AuthHandler) EsqueciSenha(c *gin.Context) {
+	var req esqueciSenhaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	// Sempre responde sucesso, mesmo se o email não existir — a lógica de
+	// não vazar informação já está no service.
+	_ = h.authService.EsqueciSenha(req.Email)
+	c.JSON(http.StatusOK, gin.H{"mensagem": "se o email existir, você receberá um link de redefinição"})
+}
+
+type redefinirSenhaRequest struct {
+	Token string `json:"token" binding:"required"`
+	Senha string `json:"senha" binding:"required,min=6"`
+}
+
+func (h *AuthHandler) RedefinirSenha(c *gin.Context) {
+	var req redefinirSenhaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	if err := h.authService.RedefinirSenha(req.Token, req.Senha); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"mensagem": "senha redefinida com sucesso"})
+}

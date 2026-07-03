@@ -7,10 +7,10 @@ export function Home() {
         Drenux
       </p>
       <h1 className="mt-2 max-w-md font-display text-4xl tracking-wide text-tinta">
-        Seu cardápio online, do pedido ao pagamento
+        Sua loja online, do pedido ao pagamento
       </h1>
       <p className="mt-4 max-w-sm text-tinta-suave">
-        Crie sua loja, monte o cardápio e receba pedidos com pagamento de verdade — sem
+        Crie sua loja, monte sua estrutura e receba pedidos com pagamento de verdade — sem
         complicação.
       </p>
 

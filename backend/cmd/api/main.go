@@ -66,7 +66,8 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	authService := service.NewAuthService(db, cfg.JWTSecret)
+	emailSender := notification.NewEmailSender(cfg.ResendAPIKey, cfg.EmailRemetente)
+	authService := service.NewAuthService(db, cfg.JWTSecret, emailSender, cfg.FrontendURLs[0])
 	authHandler := handler.NewAuthHandler(authService)
 
 	catalogoService := service.NewCatalogoService(db)
@@ -116,6 +117,8 @@ func main() {
 
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
 	router.POST("/auth/login", authHandler.Login)
+	router.POST("/auth/esqueci-senha", authHandler.EsqueciSenha)
+	router.POST("/auth/redefinir-senha", authHandler.RedefinirSenha)
 
 	// Rotas públicas — sem autenticação. É como o cliente final acessa o
 	// cardápio e faz um pedido numa loja específica, pelo slug.

@@ -4,21 +4,26 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"crypto/rand"
+	"encoding/hex"
 
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 	"github.com/WilliamBreno/cardapio-backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"github.com/WilliamBreno/cardapio-backend/internal/notification"
 )
 
 type AuthService struct {
 	db        *gorm.DB
 	jwtSecret string
+	emailSender *notification.EmailSender
+	frontendURL string
 }
 
-func NewAuthService(db *gorm.DB, jwtSecret string) *AuthService {
-	return &AuthService{db: db, jwtSecret: jwtSecret}
+func NewAuthService(db *gorm.DB, jwtSecret string, emailSender *notification.EmailSender, frontendURL string) *AuthService {
+	return &AuthService{db: db, jwtSecret: jwtSecret, emailSender: emailSender, frontendURL: frontendURL}
 }
 
 type CadastroInput struct {
@@ -138,4 +143,61 @@ func gerarSlugUnico(lojaRepo *repository.LojaRepository, nomeLoja string) (strin
 		contador++
 		slug = fmt.Sprintf("%s-%d", base, contador)
 	}
+}
+
+func (s *AuthService) EsqueciSenha(email string) error {
+	usuarioRepo := repository.NewUsuarioRepository(s.db)
+
+	usuario, err := usuarioRepo.BuscarPorEmail(email)
+	if err != nil {
+		// Email não existe — não é erro do ponto de vista de quem chamou.
+		return nil
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return fmt.Errorf("gerando token de reset: %w", err)
+	}
+	token := hex.EncodeToString(tokenBytes)
+	expira := time.Now().Add(1 * time.Hour)
+
+	if err := usuarioRepo.SalvarResetToken(usuario.ID, token, expira); err != nil {
+		return fmt.Errorf("salvando token de reset: %w", err)
+	}
+
+	if s.emailSender == nil {
+		return nil // sem serviço de email configurado, não derruba a request
+	}
+
+	link := fmt.Sprintf("%s/redefinir-senha?token=%s", s.frontendURL, token)
+	if err := s.emailSender.EnviarResetSenha(usuario.Email, usuario.Nome, link); err != nil {
+		return fmt.Errorf("enviando email de reset: %w", err)
+	}
+
+	return nil
+}
+
+// RedefinirSenha valida o token (existe e não expirou) e troca a senha.
+func (s *AuthService) RedefinirSenha(token, novaSenha string) error {
+	usuarioRepo := repository.NewUsuarioRepository(s.db)
+
+	usuario, err := usuarioRepo.BuscarPorResetToken(token)
+	if err != nil {
+		return errors.New("link inválido ou expirado")
+	}
+
+	if usuario.ResetTokenExpira == nil || time.Now().After(*usuario.ResetTokenExpira) {
+		return errors.New("link inválido ou expirado")
+	}
+
+	senhaHash, err := bcrypt.GenerateFromPassword([]byte(novaSenha), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("gerando hash da nova senha: %w", err)
+	}
+
+	if err := usuarioRepo.AtualizarSenha(usuario.ID, string(senhaHash)); err != nil {
+		return fmt.Errorf("atualizando senha: %w", err)
+	}
+
+	return nil
 }

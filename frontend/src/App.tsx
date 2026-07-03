@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
+import { EsqueciSenha } from './pages/EsqueciSenha';
+import { RedefinirSenha } from './pages/RedefinirSenha';
 import { Home } from './pages/Home';
 import { CardapioPublico } from './pages/CardapioPublico';
 import { Login } from './pages/Login';
@@ -24,6 +25,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
           <Route element={<RotaProtegida />}>
             <Route path="/admin" element={<Dashboard />}>

@@ -18,6 +18,8 @@ type Config struct {
 	StripeWebhookSecret string
 	FrontendURLs        []string
 	CronSecret          string
+	ResendAPIKey    string
+	EmailRemetente  string
 }
 
 func Load() *Config {
@@ -43,6 +45,8 @@ func Load() *Config {
 		// a URL real em produção.
 		FrontendURLs: frontendURLs,
 		CronSecret:   getEnv("CRON_SECRET", ""),
+		ResendAPIKey:   getEnv("RESEND_API_KEY", ""),
+		EmailRemetente: getEnv("EMAIL_REMETENTE", "Drenux <naoresponda@drenux.com.br>"),
 	}
 
 	if cfg.DatabaseURL == "" {

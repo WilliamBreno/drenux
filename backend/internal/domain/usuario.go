@@ -10,6 +10,8 @@ type Usuario struct {
 	SenhaHash string    `gorm:"size:255;not null" json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	ResetToken        *string    `json:"-"`
+    ResetTokenExpira  *time.Time `json:"-"`
 }
 
 // TableName fixa o nome da tabela explicitamente, em vez de depender da
