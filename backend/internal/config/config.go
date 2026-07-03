@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -15,7 +16,7 @@ type Config struct {
 	JWTSecret           string
 	StripeSecretKey     string
 	StripeWebhookSecret string
-	FrontendURL         string
+	FrontendURLs        []string
 	CronSecret          string
 }
 
@@ -26,7 +27,11 @@ func Load() *Config {
 	if err := godotenv.Load(); err != nil {
 		log.Println("aviso: .env não encontrado, lendo variáveis do ambiente do sistema")
 	}
-
+	frontendURLsRaw := getEnv("FRONTEND_URL", "http://localhost:5173")
+	frontendURLs := strings.Split(frontendURLsRaw, ",")
+	for i := range frontendURLs {
+		frontendURLs[i] = strings.TrimSpace(frontendURLs[i])
+	}
 	cfg := &Config{
 		Port:                getEnv("PORT", "8080"),
 		DatabaseURL:         getEnv("DATABASE_URL", ""),
@@ -36,8 +41,8 @@ func Load() *Config {
 		// Padrão já bate com a porta do Vite em desenvolvimento — quando
 		// fizer o deploy do frontend (Vercel), define essa variável com
 		// a URL real em produção.
-		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:5173"),
-		CronSecret:          getEnv("CRON_SECRET", ""),
+		FrontendURLs: frontendURLs,
+		CronSecret:   getEnv("CRON_SECRET", ""),
 	}
 
 	if cfg.DatabaseURL == "" {

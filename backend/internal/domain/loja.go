@@ -17,22 +17,22 @@ const (
 
 // Loja representa o cardápio de um usuário.
 type Loja struct {
-	ID              uint      `gorm:"primaryKey" json:"id"`
-	UsuarioID       uint      `gorm:"not null;unique" json:"usuario_id"`
-	Usuario         Usuario   `gorm:"foreignKey:UsuarioID" json:"-"`
-	Nome            string    `gorm:"size:100;not null" json:"nome"`
-	Slug            string    `gorm:"size:100;not null;unique" json:"slug"`
-	WhatsappNumero  string    `gorm:"size:20" json:"whatsapp_numero"`
-	LogoURL         string    `gorm:"size:500" json:"logo_url"`
-	StripeAccountID string    `gorm:"size:100" json:"-"`
+	ID              uint    `gorm:"primaryKey" json:"id"`
+	UsuarioID       uint    `gorm:"not null;unique" json:"usuario_id"`
+	Usuario         Usuario `gorm:"foreignKey:UsuarioID" json:"-"`
+	Nome            string  `gorm:"size:100;not null" json:"nome"`
+	Slug            string  `gorm:"size:100;not null;unique" json:"slug"`
+	WhatsappNumero  string  `gorm:"size:20" json:"whatsapp_numero"`
+	LogoURL         string  `gorm:"size:500" json:"logo_url"`
+	StripeAccountID string  `gorm:"size:100" json:"-"`
 
 	// Modo de pedido
-	ModoPedido               ModoPedido `gorm:"size:20;default:'imediato'" json:"modo_pedido"`
-	AntecedenciaMinimaHoras  int        `gorm:"default:24" json:"antecedencia_minima_horas"`
+	ModoPedido              ModoPedido `gorm:"size:20;default:'imediato'" json:"modo_pedido"`
+	AntecedenciaMinimaHoras int        `gorm:"default:24" json:"antecedencia_minima_horas"`
 
 	// Horário de funcionamento — armazenados como string "HH:MM".
 	// Vazios = sem restrição de horário.
-	HorarioAbertura  string `gorm:"size:5" json:"horario_abertura"`
+	HorarioAbertura   string `gorm:"size:5" json:"horario_abertura"`
 	HorarioFechamento string `gorm:"size:5" json:"horario_fechamento"`
 
 	// Margem de fechamento: para de aceitar pedidos N minutos antes do
@@ -41,8 +41,8 @@ type Loja struct {
 
 	// Pausa manual: o dono pode fechar a loja temporariamente com um
 	// aviso personalizado (ex: "em férias até dia X").
-	Pausado        bool   `gorm:"default:false" json:"pausado"`
-	MensagemPausa  string `gorm:"size:300" json:"mensagem_pausa"`
+	Pausado       bool   `gorm:"default:false" json:"pausado"`
+	MensagemPausa string `gorm:"size:300" json:"mensagem_pausa"`
 
 	// Tema visual do cardápio público — não afeta o painel admin.
 	// Valores válidos: kraft, oceano, floresta, rosa, noite, carvao, brasa, hortela

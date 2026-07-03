@@ -90,6 +90,7 @@ func (r *ProdutoRepository) BuscarEstoqueAlerta(produtoID uint) (*domain.Produto
 	}
 	return &produto, *produto.EstoqueAtual <= *produto.EstoqueAlerta
 }
+
 //
 // apenasDisponiveis controla se produtos marcados como indisponíveis
 // entram na lista — true pro cardápio público (cliente não deve ver item

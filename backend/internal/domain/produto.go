@@ -8,16 +8,16 @@ import "time"
 // proposital: assim toda checagem de "esse produto é desse dono?" vira um
 // WHERE loja_id = ? direto, sem precisar de join com Categoria toda vez.
 type Produto struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	LojaID      uint      `gorm:"not null;index" json:"loja_id"`
-	CategoriaID uint      `gorm:"not null" json:"categoria_id"`
-	Categoria   Categoria `gorm:"foreignKey:CategoriaID" json:"categoria,omitempty"`
-	Nome        string    `gorm:"size:100;not null" json:"nome"`
-	Descricao   string    `gorm:"type:text" json:"descricao"`
-	Preco       float64   `gorm:"not null" json:"preco"`
-	FotoURL    string        `gorm:"size:255" json:"foto_url"` // mantido pra compatibilidade
-	Fotos      []FotoProduto `gorm:"foreignKey:ProdutoID;constraint:OnDelete:CASCADE" json:"fotos,omitempty"`
-	Disponivel bool          `gorm:"default:true" json:"disponivel"`
+	ID          uint          `gorm:"primaryKey" json:"id"`
+	LojaID      uint          `gorm:"not null;index" json:"loja_id"`
+	CategoriaID uint          `gorm:"not null" json:"categoria_id"`
+	Categoria   Categoria     `gorm:"foreignKey:CategoriaID" json:"categoria,omitempty"`
+	Nome        string        `gorm:"size:100;not null" json:"nome"`
+	Descricao   string        `gorm:"type:text" json:"descricao"`
+	Preco       float64       `gorm:"not null" json:"preco"`
+	FotoURL     string        `gorm:"size:255" json:"foto_url"` // mantido pra compatibilidade
+	Fotos       []FotoProduto `gorm:"foreignKey:ProdutoID;constraint:OnDelete:CASCADE" json:"fotos,omitempty"`
+	Disponivel  bool          `gorm:"default:true" json:"disponivel"`
 
 	// Variações (ex: tamanhos, sabores). Quando vazio, o produto não tem
 	// opções — funciona igual ao comportamento anterior.

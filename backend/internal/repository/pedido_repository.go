@@ -61,10 +61,10 @@ func (r *PedidoRepository) AtualizarStripeSessionID(pedidoID uint, sessionID str
 
 // ResumoSemana agrega os pedidos pagos de uma loja em um período.
 type ResumoSemana struct {
-	TotalPedidos    int
-	Faturamento     float64
-	ProdutoTop      string
-	QuantidadeTop   int
+	TotalPedidos  int
+	Faturamento   float64
+	ProdutoTop    string
+	QuantidadeTop int
 }
 
 // BuscarResumoSemana retorna os dados agregados de pedidos pagos

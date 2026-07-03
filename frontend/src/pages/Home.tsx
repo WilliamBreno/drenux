@@ -4,7 +4,7 @@ export function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-fundo px-6 text-center">
       <p className="font-carimbo text-xs uppercase tracking-[0.2em] text-tinta-suave">
-        Cardápio Site
+        Drenux
       </p>
       <h1 className="mt-2 max-w-md font-display text-4xl tracking-wide text-tinta">
         Seu cardápio online, do pedido ao pagamento

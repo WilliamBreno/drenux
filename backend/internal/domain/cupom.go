@@ -12,9 +12,9 @@ const (
 // Cupom representa um código promocional criado pelo dono da loja.
 // Cada loja tem seus próprios cupons — nunca compartilhados entre lojas.
 type Cupom struct {
-	ID     uint      `gorm:"primaryKey" json:"id"`
-	LojaID uint      `gorm:"not null;index" json:"loja_id"`
-	Codigo string    `gorm:"size:30;not null" json:"codigo"` // sempre uppercase
+	ID     uint   `gorm:"primaryKey" json:"id"`
+	LojaID uint   `gorm:"not null;index" json:"loja_id"`
+	Codigo string `gorm:"size:30;not null" json:"codigo"` // sempre uppercase
 
 	// Tipo e valor do desconto
 	Tipo  TipoCupom `gorm:"size:20;not null" json:"tipo"`

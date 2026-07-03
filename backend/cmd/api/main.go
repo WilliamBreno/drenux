@@ -59,7 +59,7 @@ func main() {
 	// Postman não têm esse bloqueio, por isso só apareceu agora que o
 	// front começou a chamar de verdade.
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.FrontendURL},
+		AllowOrigins:     cfg.FrontendURLs,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -99,7 +99,7 @@ func main() {
 	}
 
 	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender)
-	stripeHandler := handler.NewStripeHandler(stripeService, cfg.FrontendURL)
+	stripeHandler := handler.NewStripeHandler(stripeService, cfg.FrontendURLs[0])
 
 	lojaService := service.NewLojaService(db)
 	lojaHandler := handler.NewLojaHandler(lojaService)

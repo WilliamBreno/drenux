@@ -53,6 +53,7 @@ func (r *VariacaoRepository) BuscarEstoqueAlerta(variacaoID uint) (*domain.Varia
 	}
 	return &v, *v.EstoqueAtual <= *v.EstoqueAlerta
 }
+
 // de forma atômica. Retorna o estoque restante, ou -1 se a variação não
 // tem controle de estoque próprio.
 func (r *VariacaoRepository) SubtrairEstoque(variacaoID uint, quantidade int) (int, error) {
