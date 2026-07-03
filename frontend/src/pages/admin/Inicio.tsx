@@ -23,6 +23,9 @@ export function Inicio() {
   const receita7Dias = data.receita_7_dias ?? [];
   const receita4Semanas = data.receita_4_semanas ?? [];
   const topProdutos = data.top_produtos ?? [];
+  const totalSemana = data.total_semana ?? 0;
+  const totalMes = data.total_mes ?? 0;
+  const pedidosSemana = data.pedidos_semana ?? 0;
 
   return (
     <div className="space-y-6">
@@ -33,19 +36,19 @@ export function Inicio() {
         <div className="rounded-2xl bg-superficie p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Semana</p>
           <p className="mt-1 font-carimbo text-xl font-semibold text-tinta">
-            {moeda(data.total_semana)}
+            {moeda(totalSemana)}
           </p>
         </div>
         <div className="rounded-2xl bg-superficie p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Mês</p>
           <p className="mt-1 font-carimbo text-xl font-semibold text-tinta">
-            {moeda(data.total_mes)}
+            {moeda(totalMes)}
           </p>
         </div>
         <div className="rounded-2xl bg-superficie p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Pedidos</p>
           <p className="mt-1 font-carimbo text-xl font-semibold text-tinta">
-            {data.pedidos_semana}
+            {pedidosSemana}
           </p>
           <p className="text-xs text-tinta-suave">últimos 7 dias</p>
         </div>
