@@ -370,7 +370,7 @@ export function Configuracoes() {
                   <input type="radio" name="taxaTipo" value="combinado" checked={taxaTipo === 'combinado'} onChange={() => setTaxaTipo('combinado')} className="mt-0.5 accent-acento" />
                   <div>
                     <p className="text-sm font-medium text-tinta">A combinar</p>
-                    <p className="text-xs text-tinta-suave">O cliente informa o endereço, você combina o frete fora do sistema.</p>
+                    <p className="text-xs text-tinta-suave">Ideal pra entregas muito variáveis (distâncias longas, itens grandes, casos especiais). O cliente informa o endereço, mas você negocia o valor direto por WhatsApp antes de confirmar.</p>
                   </div>
                 </label>
               </div>

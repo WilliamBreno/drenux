@@ -12,6 +12,7 @@ import (
 	"github.com/WilliamBreno/cardapio-backend/internal/handler"
 	"github.com/WilliamBreno/cardapio-backend/internal/middleware"
 	"github.com/WilliamBreno/cardapio-backend/internal/notification"
+	"github.com/WilliamBreno/cardapio-backend/internal/repository"
 	"github.com/WilliamBreno/cardapio-backend/internal/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -47,17 +48,11 @@ func main() {
 	}
 	log.Println("migrations aplicadas com sucesso")
 
-	// Não tem mais seed global de categorias aqui — agora cada loja ganha
-	// suas próprias "Salgados"/"Doces" no momento do cadastro (etapa que
-	// ainda vamos construir).
-
 	router := gin.Default()
 
 	// CORS: sem isso, o navegador bloqueia o frontend (rodando numa porta
 	// diferente, ex: 5173) de chamar essa API (porta 8080) — é uma regra
-	// de segurança do próprio navegador, não da nossa aplicação. curl e
-	// Postman não têm esse bloqueio, por isso só apareceu agora que o
-	// front começou a chamar de verdade.
+	// de segurança do próprio navegador, não da nossa aplicação.
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.FrontendURLs,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -81,11 +76,10 @@ func main() {
 
 	variacaoService := service.NewVariacaoService(db)
 	variacaoHandler := handler.NewVariacaoHandler(variacaoService)
-	
+
 	distanciaService := service.NewDistanciaService()
 
 	pedidoService := service.NewPedidoService(db, distanciaService)
-	pedidoHandler := handler.NewPedidoHandler(pedidoService)
 
 	// WhatsApp não é mais fatal: se não estiver pareado (ou se der
 	// qualquer erro), o servidor sobe mesmo assim — só fica sem mandar
@@ -101,11 +95,20 @@ func main() {
 		log.Println("WhatsApp conectado com sucesso")
 	}
 
+	lojaService := service.NewLojaService(db)
+	lojaRepoParaPedido := repository.NewLojaRepository(db)
+
+	pedidoHandler := handler.NewPedidoHandler(
+		pedidoService,
+		repository.NewPedidoRepository(db),
+		lojaRepoParaPedido,
+		whatsappSender,
+		cfg.FrontendURLs[0],
+	)
+
 	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender)
 	stripeHandler := handler.NewStripeHandler(stripeService, cfg.FrontendURLs[0])
 
-
-	lojaService := service.NewLojaService(db)
 	lojaHandler := handler.NewLojaHandler(lojaService, distanciaService)
 
 	dashboardService := service.NewDashboardService(db)
@@ -117,7 +120,7 @@ func main() {
 
 	relatorioService := service.NewRelatorioService(db, whatsappSender)
 	relatorioHandler := handler.NewRelatorioHandler(relatorioService, cfg.CronSecret)
-	
+
 	freteHandler := handler.NewFreteHandler(lojaService, distanciaService)
 
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
@@ -130,8 +133,8 @@ func main() {
 	router.GET("/lojas/:slug", catalogoHandler.BuscarCardapio)
 	router.GET("/lojas/:slug/historico", catalogoHandler.BuscarHistorico)
 	router.POST("/lojas/:slug/pedidos", pedidoHandler.Criar)
+	router.GET("/lojas/:slug/pedidos/:id/rastrear", pedidoHandler.Rastrear)
 	router.POST("/lojas/:slug/cupons/validar", func(c *gin.Context) {
-		// Resolve o loja_id a partir do slug pra usar no handler
 		loja, err := lojaService.BuscarPorSlug(c.Param("slug"))
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"erro": "loja não encontrada"})
@@ -142,6 +145,7 @@ func main() {
 	})
 	router.POST("/lojas/:slug/cotar-frete", freteHandler.Cotar)
 	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
+
 	// Webhook da Stripe — chamado pela Stripe, não por usuário. Validado
 	// por assinatura, não por JWT.
 	router.POST("/webhooks/stripe", stripeHandler.Webhook)
@@ -189,6 +193,8 @@ func main() {
 	variacoes.DELETE("/:produtoId/:variacaoId", variacaoHandler.Deletar)
 
 	admin.GET("/pedidos", pedidoHandler.Listar)
+	admin.PUT("/pedidos/:id/status-entrega", pedidoHandler.AtualizarStatusEntrega)
+	admin.POST("/pedidos/:id/localizacao", pedidoHandler.AtualizarLocalizacao)
 
 	admin.POST("/stripe/onboarding", stripeHandler.IniciarOnboarding)
 	admin.GET("/stripe/status", stripeHandler.Status)
@@ -197,8 +203,7 @@ func main() {
 	admin.PUT("/loja", lojaHandler.AtualizarConfiguracoes)
 
 	// Health check: confirma que o servidor está de pé E que o banco está
-	// respondendo. Útil também depois pro Render usar como health check
-	// do serviço (ele consulta essa rota pra saber se o deploy está saudável).
+	// respondendo.
 	router.GET("/health", func(c *gin.Context) {
 		sqlDB, err := db.DB()
 		if err != nil || sqlDB.Ping() != nil {

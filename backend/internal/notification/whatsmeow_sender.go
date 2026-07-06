@@ -123,6 +123,12 @@ func (s *WhatsmeowSender) EnviarTextoAdmin(ctx context.Context, telefoneAdmin, t
 	return s.enviarTexto(ctx, telefoneAdmin, texto)
 }
 
+// EnviarSaiuParaEntrega avisa o cliente que o pedido saiu pra entrega,
+// com o link de rastreamento em tempo real.
+func (s *WhatsmeowSender) EnviarSaiuParaEntrega(ctx context.Context, pedido *domain.Pedido, lojaNome, linkRastreamento string) error {
+	return s.enviarTexto(ctx, pedido.ClienteTelefone, montarMensagemSaiuParaEntrega(pedido, lojaNome, linkRastreamento))
+}
+
 // enviarTexto resolve o número pelo IsOnWhatsApp antes de mandar a
 // mensagem, em vez de montar o destinatário direto a partir do número
 // puro. É essa consulta ao servidor da própria WhatsApp que resolve o

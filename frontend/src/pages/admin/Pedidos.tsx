@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { listarPedidos } from '../../api/admin';
 import type { Pedido, StatusPedido } from '../../api/types';
@@ -7,6 +8,11 @@ const statusInfo: Record<StatusPedido, { label: string; classe: string }> = {
   aguardando_pagamento: { label: 'Aguardando pagamento', classe: 'bg-douro/20 text-douro' },
   pago: { label: 'Pago', classe: 'bg-emerald-100 text-emerald-700' },
   cancelado: { label: 'Cancelado', classe: 'bg-acento/10 text-acento' },
+};
+
+const statusEntregaInfo: Record<string, { label: string; classe: string }> = {
+  saiu_para_entrega: { label: '🛵 Saiu para entrega', classe: 'bg-douro/20 text-douro' },
+  entregue: { label: '✅ Entregue', classe: 'bg-emerald-100 text-emerald-700' },
 };
 
 const filtros: { valor: 'todos' | StatusPedido; label: string }[] = [
@@ -77,6 +83,14 @@ export function Pedidos() {
 
 function PedidoCard({ pedido }: { pedido: Pedido }) {
   const status = statusInfo[pedido.status];
+  const statusEntrega = pedido.status_entrega ? statusEntregaInfo[pedido.status_entrega] : null;
+
+  // Só faz sentido gerenciar entrega em pedidos pagos, com modo "entrega",
+  // e que ainda não foram marcados como entregues.
+  const podeGerenciarEntrega =
+    pedido.status === 'pago' &&
+    pedido.modo_entrega === 'entrega' &&
+    pedido.status_entrega !== 'entregue';
 
   return (
     <li className="rounded-2xl bg-superficie p-4 shadow-sm">
@@ -87,11 +101,16 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
           </p>
           <p className="text-sm text-tinta-suave">{pedido.cliente_telefone}</p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.classe}`}
-        >
-          {status.label}
-        </span>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.classe}`}>
+            {status.label}
+          </span>
+          {statusEntrega && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusEntrega.classe}`}>
+              {statusEntrega.label}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 space-y-1 border-t border-tinta/10 pt-3">
@@ -124,6 +143,15 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
           R$ {pedido.total.toFixed(2).replace('.', ',')}
         </span>
       </div>
+
+      {podeGerenciarEntrega && (
+        <Link
+          to={`/admin/pedidos/${pedido.id}/localizacao`}
+          className="mt-3 block rounded-full bg-acento px-4 py-2 text-center text-sm font-semibold text-superficie"
+        >
+          {pedido.status_entrega === 'saiu_para_entrega' ? '📍 Gerenciar entrega' : '🛵 Iniciar entrega'}
+        </Link>
+      )}
     </li>
   );
 }

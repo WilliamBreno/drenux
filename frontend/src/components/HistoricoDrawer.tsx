@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { buscarHistorico } from '../api/historico';
 import { useCartStore } from '../store/cartStore';
 import type { Pedido, Produto } from '../api/types';
@@ -52,7 +53,6 @@ export function HistoricoDrawer({ aberto, onFechar, slug, produtos, onAbrirCarri
     for (const item of pedido.itens) {
       const produto = produtos.find((p) => p.id === item.produto_id && p.disponivel);
       if (!produto) continue;
-      // Tenta encontrar a variação se o item tinha uma
       const variacao = item.variacao_nome
         ? produto.variacoes?.find((v) => v.nome === item.variacao_nome && v.disponivel)
         : undefined;
@@ -133,6 +133,19 @@ export function HistoricoDrawer({ aberto, onFechar, slug, produtos, onAbrirCarri
                       Repetir
                     </button>
                   </div>
+
+                  {/* Rastreamento — só aparece pra pedidos de entrega que
+                      já saíram (ou já foram entregues) */}
+                  {pedido.modo_entrega === 'entrega' &&
+                    (pedido.status_entrega === 'saiu_para_entrega' || pedido.status_entrega === 'entregue') && (
+                      <Link
+                        to={`/${slug}/pedido/${pedido.id}/rastrear?telefone=${normalizarTelefone(telefone)}`}
+                        onClick={onFechar}
+                        className="mt-3 block rounded-full border border-acento/30 px-3 py-1.5 text-center text-xs font-semibold text-acento"
+                      >
+                        {pedido.status_entrega === 'entregue' ? '✅ Pedido entregue' : '🛵 Rastrear entrega'}
+                      </Link>
+                    )}
                 </li>
               ))}
             </ul>

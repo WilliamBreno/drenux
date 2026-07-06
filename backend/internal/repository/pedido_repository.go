@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 	"gorm.io/gorm"
 )
@@ -43,9 +45,22 @@ func (r *PedidoRepository) ListarPorTelefone(lojaID uint, telefone string, limit
 		Find(&pedidos).Error
 	return pedidos, err
 }
+
 func (r *PedidoRepository) BuscarPorID(id uint) (*domain.Pedido, error) {
 	var pedido domain.Pedido
 	if err := r.db.Preload("Itens").First(&pedido, id).Error; err != nil {
+		return nil, err
+	}
+	return &pedido, nil
+}
+
+// BuscarPorIDETelefone é usado pelo rastreamento público — funciona como
+// uma "senha simples": só quem sabe o número de telefone usado no pedido
+// consegue ver a localização de entrega, sem precisar de login.
+func (r *PedidoRepository) BuscarPorIDETelefone(id uint, telefone string) (*domain.Pedido, error) {
+	var pedido domain.Pedido
+	if err := r.db.Where("id = ? AND cliente_telefone = ?", id, telefone).
+		Preload("Itens").First(&pedido).Error; err != nil {
 		return nil, err
 	}
 	return &pedido, nil
@@ -57,6 +72,24 @@ func (r *PedidoRepository) AtualizarStatus(pedidoID uint, status domain.StatusPe
 
 func (r *PedidoRepository) AtualizarStripeSessionID(pedidoID uint, sessionID string) error {
 	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Update("stripe_session_id", sessionID).Error
+}
+
+// AtualizarStatusEntrega muda o progresso da entrega ("saiu_para_entrega"
+// ou "entregue"). Chamado pelo dono/motoboy no painel admin.
+func (r *PedidoRepository) AtualizarStatusEntrega(pedidoID uint, statusEntrega string) error {
+	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Update("status_entrega", statusEntrega).Error
+}
+
+// AtualizarLocalizacaoEntregador grava a posição mais recente de quem
+// está entregando. Chamado periodicamente pelo navegador de quem
+// compartilha a localização, enquanto a entrega está em andamento.
+func (r *PedidoRepository) AtualizarLocalizacaoEntregador(pedidoID uint, latitude, longitude float64) error {
+	agora := time.Now()
+	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Updates(map[string]interface{}{
+		"entregador_latitude":      latitude,
+		"entregador_longitude":     longitude,
+		"entregador_atualizado_em": agora,
+	}).Error
 }
 
 // ResumoSemana agrega os pedidos pagos de uma loja em um período.

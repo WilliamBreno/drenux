@@ -24,4 +24,8 @@ type NotificationSender interface {
 	// EnviarTextoAdmin envia uma mensagem de texto livre pro dono da loja.
 	// Usado pelo relatório semanal e alertas de estoque personalizados.
 	EnviarTextoAdmin(ctx context.Context, telefoneAdmin, texto string) error
+
+	// EnviarSaiuParaEntrega avisa o cliente que o pedido saiu pra
+	// entrega, com o link de rastreamento em tempo real.
+	EnviarSaiuParaEntrega(ctx context.Context, pedido *domain.Pedido, lojaNome, linkRastreamento string) error
 }

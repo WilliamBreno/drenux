@@ -158,6 +158,10 @@ export interface Pedido {
   itens: ItemPedido[];
   created_at: string;
   updated_at: string;
+  status_entrega: string;
+  entregador_latitude: number;
+  entregador_longitude: number;
+  entregador_atualizado_em: string | null;
 }
 
 // Carrinho — estado só do front, nunca enviado direto pra API. Na hora

@@ -1,0 +1,139 @@
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { atualizarStatusEntrega, atualizarLocalizacao } from '../../api/rastreamento';
+
+const INTERVALO_MS = 25_000; // 25 segundos, conforme definido
+
+export function CompartilharLocalizacao() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const pedidoId = Number(id);
+
+  const [compartilhando, setCompartilhando] = useState(false);
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [finalizando, setFinalizando] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const posicaoAtualRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Limpa tudo se a pessoa sair da página sem clicar em "Parar" —
+      // evita continuar mandando localização em segundo plano à toa.
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  async function iniciarCompartilhamento() {
+    if (!navigator.geolocation) {
+      setErro('Esse navegador não suporta geolocalização.');
+      return;
+    }
+    setErro(null);
+
+    try {
+      await atualizarStatusEntrega(pedidoId, 'saiu_para_entrega');
+    } catch {
+      setErro('Não foi possível marcar o pedido como "saiu para entrega". Tenta de novo.');
+      return;
+    }
+
+    // watchPosition mantém a posição sempre atualizada localmente; o
+    // envio pro backend acontece separado, a cada 25s, pra não sobrecarregar
+    // com uma requisição a cada pequeno movimento do GPS.
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (posicao) => {
+        posicaoAtualRef.current = {
+          lat: posicao.coords.latitude,
+          lng: posicao.coords.longitude,
+        };
+      },
+      () => setErro('Não conseguimos acessar sua localização. Verifica se a permissão foi concedida.'),
+      { enableHighAccuracy: true, maximumAge: 10_000 }
+    );
+
+    async function enviar() {
+      if (!posicaoAtualRef.current) return;
+      try {
+        await atualizarLocalizacao(pedidoId, posicaoAtualRef.current.lat, posicaoAtualRef.current.lng);
+        setUltimaAtualizacao(new Date());
+      } catch {
+        // Falha silenciosa num ciclo só — tenta de novo no próximo, sem
+        // travar a experiência de quem está dirigindo.
+      }
+    }
+
+    enviar(); // primeira vez já dispara, sem esperar os 25s iniciais
+    intervalRef.current = setInterval(enviar, INTERVALO_MS);
+    setCompartilhando(true);
+  }
+
+  function pararCompartilhamento() {
+    if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setCompartilhando(false);
+  }
+
+  async function marcarEntregue() {
+    setFinalizando(true);
+    try {
+      await atualizarStatusEntrega(pedidoId, 'entregue');
+      pararCompartilhamento();
+      navigate('/admin/pedidos');
+    } catch {
+      setErro('Não foi possível marcar como entregue. Tenta de novo.');
+      setFinalizando(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-md space-y-6">
+      <h1 className="font-display text-2xl tracking-wide text-tinta">
+        Entrega do pedido #{pedidoId}
+      </h1>
+
+      <div className="rounded-2xl bg-superficie p-5 shadow-sm">
+        {!compartilhando ? (
+          <>
+            <p className="text-sm text-tinta-suave">
+              Ao iniciar, o cliente vai poder acompanhar sua localização em tempo real
+              até você marcar a entrega como concluída. Mantenha essa aba aberta
+              enquanto estiver a caminho.
+            </p>
+            <button
+              onClick={iniciarCompartilhamento}
+              className="mt-4 w-full rounded-full bg-acento py-3 font-semibold text-superficie"
+            >
+              🛵 Iniciar entrega e compartilhar localização
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
+              <p className="text-sm font-medium text-tinta">Compartilhando localização...</p>
+            </div>
+            {ultimaAtualizacao && (
+              <p className="mt-1 text-xs text-tinta-suave">
+                Última atualização: {ultimaAtualizacao.toLocaleTimeString('pt-BR')}
+              </p>
+            )}
+            <p className="mt-3 text-xs text-tinta-suave">
+              Mantenha essa aba aberta e a tela do celular ligada até finalizar a entrega.
+            </p>
+            <button
+              onClick={marcarEntregue}
+              disabled={finalizando}
+              className="mt-4 w-full rounded-full bg-acento py-3 font-semibold text-superficie disabled:opacity-60"
+            >
+              {finalizando ? 'Finalizando...' : '✅ Marcar como entregue'}
+            </button>
+          </>
+        )}
+        {erro && <p className="mt-3 text-sm text-acento">{erro}</p>}
+      </div>
+    </div>
+  );
+}

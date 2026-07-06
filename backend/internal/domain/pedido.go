@@ -42,6 +42,10 @@ type Pedido struct {
 	CreatedAt       time.Time    `json:"created_at"`
 	UpdatedAt       time.Time    `json:"updated_at"`
 	TaxaEntrega float64 `gorm:"default:0" json:"taxa_entrega"`
+	StatusEntrega string `gorm:"size:30;default:''" json:"status_entrega"`
+	EntregadorLatitude     float64    `gorm:"default:0" json:"entregador_latitude"`
+	EntregadorLongitude    float64    `gorm:"default:0" json:"entregador_longitude"`
+	EntregadorAtualizadoEm *time.Time `json:"entregador_atualizado_em"`
 }
 
 func (Pedido) TableName() string {
