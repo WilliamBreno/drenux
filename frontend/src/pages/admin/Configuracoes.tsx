@@ -30,8 +30,11 @@ export function Configuracoes() {
   const [mensagemPausa, setMensagemPausa] = useState('');
   const [aceitaRetirada, setAceitaRetirada] = useState(true);
   const [aceitaEntrega, setAceitaEntrega] = useState(false);
-  const [taxaTipo, setTaxaTipo] = useState<'fixa' | 'combinado'>('combinado');
+  const [taxaTipo, setTaxaTipo] = useState<'fixa' | 'combinado' | 'por_km'>('combinado');
   const [taxaValor, setTaxaValor] = useState(0);
+  const [taxaBase, setTaxaBase] = useState(0);
+  const [taxaPorKm, setTaxaPorKm] = useState(0);
+  const [endereco, setEndereco] = useState('');
   const [valorMinimo, setValorMinimo] = useState(0);
   const [tema, setTema] = useState('kraft');
   const [salvo, setSalvo] = useState(false);
@@ -55,6 +58,9 @@ export function Configuracoes() {
       setAceitaEntrega(loja.aceita_entrega ?? false);
       setTaxaTipo(loja.taxa_entrega_tipo ?? 'combinado');
       setTaxaValor(loja.taxa_entrega_valor ?? 0);
+      setTaxaBase(loja.taxa_entrega_base ?? 0);
+      setTaxaPorKm(loja.taxa_entrega_por_km ?? 0);
+      setEndereco(loja.endereco ?? '');
       setValorMinimo(loja.valor_minimo_pedido ?? 0);
       setTema(loja.tema ?? 'kraft');
     }
@@ -71,9 +77,8 @@ export function Configuracoes() {
     onError: () => setErro('Não foi possível salvar.'),
   });
 
-  function salvar(e: FormEvent) {
-    e.preventDefault();
-    mutSalvar.mutate({
+  function montarPayload() {
+    return {
       whatsapp_numero: whatsapp,
       logo_url: logoUrl,
       modo_pedido: modoPedido,
@@ -87,9 +92,17 @@ export function Configuracoes() {
       aceita_entrega: aceitaEntrega,
       taxa_entrega_tipo: taxaTipo,
       taxa_entrega_valor: taxaValor,
+      taxa_entrega_base: taxaBase,
+      taxa_entrega_por_km: taxaPorKm,
+      endereco,
       valor_minimo_pedido: valorMinimo,
       tema,
-    });
+    };
+  }
+
+  function salvar(e: FormEvent) {
+    e.preventDefault();
+    mutSalvar.mutate(montarPayload());
   }
 
   async function selecionarLogo(e: ChangeEvent<HTMLInputElement>) {
@@ -100,23 +113,7 @@ export function Configuracoes() {
     try {
       const url = await enviarImagem(arquivo);
       setLogoUrl(url);
-      await atualizarConfiguracoes({
-        whatsapp_numero: whatsapp,
-        logo_url: url,
-        modo_pedido: modoPedido,
-        antecedencia_minima_horas: antecedencia,
-        horario_abertura: abertura,
-        horario_fechamento: fechamento,
-        margem_fechamento_minutos: margem,
-        pausado,
-        mensagem_pausa: mensagemPausa,
-        aceita_retirada: aceitaRetirada,
-        aceita_entrega: aceitaEntrega,
-        taxa_entrega_tipo: taxaTipo,
-        taxa_entrega_valor: taxaValor,
-        valor_minimo_pedido: valorMinimo,
-        tema,
-      });
+      await atualizarConfiguracoes({ ...montarPayload(), logo_url: url });
       queryClient.invalidateQueries({ queryKey: ['loja'] });
     } catch {
       setErroLogo('Não foi possível enviar a imagem.');
@@ -318,6 +315,57 @@ export function Configuracoes() {
                     />
                   </Campo>
                 )}
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="radio" name="taxaTipo" value="por_km" checked={taxaTipo === 'por_km'} onChange={() => setTaxaTipo('por_km')} className="mt-0.5 accent-acento" />
+                  <div>
+                    <p className="text-sm font-medium text-tinta">Por quilometragem</p>
+                    <p className="text-xs text-tinta-suave">Calculado automaticamente com base na distância até o endereço do cliente. O cliente já vê o valor no carrinho.</p>
+                  </div>
+                </label>
+                {taxaTipo === 'por_km' && (
+                  <div className="space-y-3 pl-6">
+                    <Campo label="Endereço da loja (ponto de partida)">
+                      <input
+                        value={endereco}
+                        onChange={(e) => setEndereco(e.target.value)}
+                        placeholder="Rua, número, bairro, cidade, estado"
+                        className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento"
+                      />
+                      <span className="mt-1 block text-xs text-tinta-suave">
+                        Usado pra calcular a distância até o cliente. Quanto mais completo, mais preciso o cálculo.
+                      </span>
+                    </Campo>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Campo label="Taxa base (R$)">
+                        <input
+                          type="number"
+                          step="0.50"
+                          min="0"
+                          value={taxaBase || ''}
+                          onChange={(e) => setTaxaBase(parseFloat(e.target.value) || 0)}
+                          placeholder="0,00"
+                          className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento"
+                        />
+                      </Campo>
+                      <Campo label="Valor por km (R$)">
+                        <input
+                          type="number"
+                          step="0.10"
+                          min="0"
+                          value={taxaPorKm || ''}
+                          onChange={(e) => setTaxaPorKm(parseFloat(e.target.value) || 0)}
+                          placeholder="0,00"
+                          className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento"
+                        />
+                      </Campo>
+                    </div>
+                    <p className="text-xs text-tinta-suave">
+                      Exemplo: taxa base R$ 5,00 + R$ 1,50/km → um cliente a 4km paga R$ 11,00 de entrega.
+                    </p>
+                  </div>
+                )}
+
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="radio" name="taxaTipo" value="combinado" checked={taxaTipo === 'combinado'} onChange={() => setTaxaTipo('combinado')} className="mt-0.5 accent-acento" />
                   <div>

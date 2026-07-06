@@ -41,6 +41,7 @@ type Pedido struct {
 	Itens           []ItemPedido `gorm:"foreignKey:PedidoID" json:"itens"`
 	CreatedAt       time.Time    `json:"created_at"`
 	UpdatedAt       time.Time    `json:"updated_at"`
+	TaxaEntrega float64 `gorm:"default:0" json:"taxa_entrega"`
 }
 
 func (Pedido) TableName() string {

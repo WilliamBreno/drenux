@@ -55,6 +55,12 @@ export interface DashboardData {
   top_produtos: { nome: string; quantidade: number }[];
 }
 
+// Tipo de cálculo da taxa de entrega:
+// "fixa"      → valor fixo definido pelo dono
+// "combinado" → cliente informa endereço, dono combina fora do sistema
+// "por_km"    → calculado automaticamente: taxa_entrega_base + (distância_km * taxa_entrega_por_km)
+export type TaxaEntregaTipo = 'fixa' | 'combinado' | 'por_km';
+
 export interface Loja {
   id: number;
   usuario_id: number;
@@ -71,8 +77,13 @@ export interface Loja {
   mensagem_pausa: string;
   aceita_retirada: boolean;
   aceita_entrega: boolean;
-  taxa_entrega_tipo: 'fixa' | 'combinado';
+  taxa_entrega_tipo: TaxaEntregaTipo;
   taxa_entrega_valor: number;
+  taxa_entrega_base: number;
+  taxa_entrega_por_km: number;
+  endereco: string;
+  latitude: number;
+  longitude: number;
   valor_minimo_pedido: number;
   tema: string;
   created_at: string;
@@ -93,8 +104,10 @@ export interface CardapioPublico {
     mensagem_pausa: string;
     aceita_retirada: boolean;
     aceita_entrega: boolean;
-    taxa_entrega_tipo: 'fixa' | 'combinado';
+    taxa_entrega_tipo: TaxaEntregaTipo;
     taxa_entrega_valor: number;
+    taxa_entrega_base: number;
+    taxa_entrega_por_km: number;
     valor_minimo_pedido: number;
     tema: string;
   };

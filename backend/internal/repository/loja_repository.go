@@ -54,8 +54,18 @@ type ConfiguracoesLoja struct {
 	AceitaEntrega           bool
 	TaxaEntregaTipo         string
 	TaxaEntregaValor        float64
+	TaxaEntregaBase         float64
+	TaxaEntregaPorKm        float64
 	ValorMinimoPedido       float64
 	Tema                    string
+
+	// Endereço de origem da loja, usado como ponto de partida no cálculo
+	// de frete por quilometragem. Latitude/Longitude são preenchidas pelo
+	// handler (via geocodificação) antes de chegar aqui — esse repositório
+	// só grava o que já vier pronto.
+	Endereco  string
+	Latitude  float64
+	Longitude float64
 }
 
 // AtualizarConfiguracoes grava todos os campos editáveis da loja de uma vez.
@@ -74,8 +84,13 @@ func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLo
 		"aceita_entrega":            cfg.AceitaEntrega,
 		"taxa_entrega_tipo":         cfg.TaxaEntregaTipo,
 		"taxa_entrega_valor":        cfg.TaxaEntregaValor,
+		"taxa_entrega_base":         cfg.TaxaEntregaBase,
+		"taxa_entrega_por_km":       cfg.TaxaEntregaPorKm,
 		"valor_minimo_pedido":       cfg.ValorMinimoPedido,
 		"tema":                      cfg.Tema,
+		"endereco":                  cfg.Endereco,
+		"latitude":                  cfg.Latitude,
+		"longitude":                 cfg.Longitude,
 	}).Error
 }
 

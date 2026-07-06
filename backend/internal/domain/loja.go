@@ -55,12 +55,16 @@ type Loja struct {
 	// Pelo menos um dos dois deve estar ativo.
 	AceitaRetirada bool `gorm:"default:true" json:"aceita_retirada"`
 	AceitaEntrega  bool `gorm:"default:false" json:"aceita_entrega"`
-
+	Endereco  string  `gorm:"size:300" json:"endereco"`
+	Latitude  float64 `gorm:"default:0" json:"latitude"`
+	Longitude float64 `gorm:"default:0" json:"longitude"`
 	// Taxa de entrega:
 	// "fixa"      → valor fixo definido pelo dono, somado ao total no checkout
 	// "combinado" → cliente informa o endereço, dono combina o valor fora do sistema
 	TaxaEntregaTipo  string  `gorm:"size:20;default:'combinado'" json:"taxa_entrega_tipo"`
 	TaxaEntregaValor float64 `gorm:"default:0" json:"taxa_entrega_valor"`
+	TaxaEntregaBase  float64 `gorm:"default:0" json:"taxa_entrega_base"`
+	TaxaEntregaPorKm float64 `gorm:"default:0" json:"taxa_entrega_por_km"`
 
 	// Mantido por compatibilidade — substituído por ModoPedido.
 	// Será removido numa migration futura.
@@ -68,6 +72,7 @@ type Loja struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
 }
 
 func (Loja) TableName() string {

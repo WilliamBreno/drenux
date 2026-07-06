@@ -28,18 +28,20 @@ type PedidoInput struct {
 }
 
 type PedidoService struct {
-	db         *gorm.DB
-	lojaRepo   *repository.LojaRepository
-	pedidoRepo *repository.PedidoRepository
-	cupomRepo  *repository.CupomRepository
+	db               *gorm.DB
+	lojaRepo         *repository.LojaRepository
+	pedidoRepo       *repository.PedidoRepository
+	cupomRepo        *repository.CupomRepository
+	distanciaService *DistanciaService
 }
 
-func NewPedidoService(db *gorm.DB) *PedidoService {
+func NewPedidoService(db *gorm.DB, distanciaService *DistanciaService) *PedidoService {
 	return &PedidoService{
-		db:         db,
-		lojaRepo:   repository.NewLojaRepository(db),
-		pedidoRepo: repository.NewPedidoRepository(db),
-		cupomRepo:  repository.NewCupomRepository(db),
+		db:               db,
+		lojaRepo:         repository.NewLojaRepository(db),
+		pedidoRepo:       repository.NewPedidoRepository(db),
+		cupomRepo:        repository.NewCupomRepository(db),
+		distanciaService: distanciaService,
 	}
 }
 
@@ -77,6 +79,37 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 		return nil, err
 	}
 
+	// Calcula a taxa de entrega ANTES da transação — se for "por_km" e a
+	// geocodificação falhar, queremos rejeitar o pedido com uma mensagem
+	// clara, sem nem chegar a mexer no banco. Esse valor é a fonte de
+	// verdade cobrada de verdade; qualquer cotação mostrada antes no
+	// carrinho do cliente foi só uma prévia, nunca confiável sozinha.
+	var taxaEntrega float64
+	if modoEntrega == domain.ModoEntregaEntrega {
+		switch loja.TaxaEntregaTipo {
+		case "fixa":
+			taxaEntrega = loja.TaxaEntregaValor
+
+		case "por_km":
+			if loja.Latitude == 0 && loja.Longitude == 0 {
+				return nil, errors.New("essa loja ainda não configurou o endereço de origem pra calcular o frete")
+			}
+			if s.distanciaService == nil {
+				return nil, errors.New("cálculo de frete indisponível no momento")
+			}
+			destino, err := s.distanciaService.Geocodificar(input.EnderecoEntrega)
+			if err != nil {
+				return nil, errors.New("não conseguimos localizar o endereço de entrega informado — confere se está completo")
+			}
+			origem := Coordenada{Latitude: loja.Latitude, Longitude: loja.Longitude}
+			distancia := s.distanciaService.DistanciaKm(origem, *destino)
+			taxaEntrega = CalcularTaxaPorKm(distancia, loja.TaxaEntregaBase, loja.TaxaEntregaPorKm)
+
+		case "combinado":
+			taxaEntrega = 0 // combinado fora do sistema, não entra no total cobrado agora
+		}
+	}
+
 	pedido := domain.Pedido{
 		LojaID:          loja.ID,
 		ClienteNome:     input.ClienteNome,
@@ -85,6 +118,7 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 		Status:          domain.StatusAguardandoPagamento,
 		ModoEntrega:     modoEntrega,
 		EnderecoEntrega: input.EnderecoEntrega,
+		TaxaEntrega:     taxaEntrega,
 	}
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
@@ -155,14 +189,7 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 			})
 		}
 
-		pedido.Total = total
-
-		// Soma a taxa de entrega fixa, se aplicável
-		if modoEntrega == domain.ModoEntregaEntrega &&
-			loja.TaxaEntregaTipo == "fixa" &&
-			loja.TaxaEntregaValor > 0 {
-			pedido.Total += loja.TaxaEntregaValor
-		}
+		pedido.Total = total + taxaEntrega
 
 		// Valida valor mínimo de pedido (sobre o subtotal, sem taxa de entrega)
 		if loja.ValorMinimoPedido > 0 && total < loja.ValorMinimoPedido {
@@ -243,7 +270,6 @@ func validarLojaAberta(loja *domain.Loja) error {
 		return errors.New(msg)
 	}
 
-	// Se não tem horário configurado, não valida
 	if loja.HorarioAbertura == "" || loja.HorarioFechamento == "" {
 		return nil
 	}
@@ -256,8 +282,6 @@ func validarLojaAberta(loja *domain.Loja) error {
 	agora := time.Now().In(fusoBrasil)
 	agoraStr := agora.Format("15:04")
 
-	// Aplica a margem de fechamento: subtrai os minutos da hora de
-	// fechamento pra definir o limite real de aceitar pedidos.
 	fechamento := loja.HorarioFechamento
 	if loja.MargemFechamentoMinutos > 0 {
 		t, err := time.Parse("15:04", loja.HorarioFechamento)
@@ -283,9 +307,6 @@ func validarDataRetirada(dataRetirada time.Time, loja *domain.Loja) error {
 
 	agora := time.Now().In(fusoBrasil)
 
-	// No modo imediato, não há data de retirada pra validar — o frontend
-	// nem exibe esse campo, mas uma req maliciosa poderia mandar algo.
-	// Aceitamos qualquer data >= agora.
 	if loja.ModoPedido == domain.ModoPedidoImediato {
 		if dataRetirada.Before(agora.Add(-1 * time.Minute)) {
 			return errors.New("data de retirada não pode ser no passado")
@@ -293,8 +314,6 @@ func validarDataRetirada(dataRetirada time.Time, loja *domain.Loja) error {
 		return nil
 	}
 
-	// Modo agendado: a data precisa estar no futuro com antecedência
-	// mínima configurada pelo dono.
 	minimoHoras := loja.AntecedenciaMinimaHoras
 	if minimoHoras <= 0 {
 		minimoHoras = 1

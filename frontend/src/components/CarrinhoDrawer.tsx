@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/cartStore';
 import { criarPedido, criarCheckout } from '../api/pedidos';
 import { validarCupom } from '../api/cupons';
+import { cotarFrete } from '../api/frete';
 import { Campo } from './Campo';
 
 interface Props {
@@ -34,10 +35,6 @@ function dataMinima(antecedenciaHoras: number): string {
   return formatarDataLocal(data);
 }
 
-// Calcula a hora mínima que pode ser escolhida para uma data específica.
-// Se a data escolhida for o mesmo dia do mínimo possível (agora +
-// antecedência), bloqueia as horas anteriores ao mínimo. Qualquer data
-// além disso libera todas as horas (00:00).
 function horaMinima(dataSelecionada: string, antecedenciaHoras: number): string {
   if (!dataSelecionada) return '00:00';
 
@@ -46,8 +43,6 @@ function horaMinima(dataSelecionada: string, antecedenciaHoras: number): string 
   const diaMinimo = formatarDataLocal(minimo);
 
   if (dataSelecionada === diaMinimo) {
-    // Arredonda pra cima pro próximo intervalo de 15 min pra não deixar
-    // uma hora "quase válida" que o backend vai rejeitar mesmo assim
     const mins = minimo.getMinutes();
     const arredondado = Math.ceil(mins / 15) * 15;
     minimo.setMinutes(arredondado, 0, 0);
@@ -84,9 +79,58 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Cotação de frete por km — calculada em tempo real conforme o cliente
+  // digita o endereço, com debounce pra não disparar uma chamada a cada
+  // letra digitada.
+  const [freteCalculado, setFreteCalculado] = useState<number | null>(null);
+  const [distanciaKm, setDistanciaKm] = useState<number | null>(null);
+  const [calculandoFrete, setCalculandoFrete] = useState(false);
+  const [erroFrete, setErroFrete] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (taxaEntregaTipo !== 'por_km' || modoEntrega !== 'entrega') {
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!endereco.trim() || endereco.trim().length < 8) {
+      setFreteCalculado(null);
+      setDistanciaKm(null);
+      setErroFrete(null);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setCalculandoFrete(true);
+      setErroFrete(null);
+      try {
+        const resultado = await cotarFrete(slug, endereco.trim());
+        setFreteCalculado(resultado.valor_frete);
+        setDistanciaKm(resultado.distancia_km);
+      } catch {
+        setFreteCalculado(null);
+        setDistanciaKm(null);
+        setErroFrete('Não conseguimos calcular o frete pra esse endereço. Confere se está completo (rua, número, bairro, cidade).');
+      } finally {
+        setCalculandoFrete(false);
+      }
+    }, 900); // espera o cliente parar de digitar por ~0.9s antes de cotar
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endereco, taxaEntregaTipo, modoEntrega, slug]);
+
   if (!aberto) return null;
 
-  const taxaEntrega = modoEntrega === 'entrega' && taxaEntregaTipo === 'fixa' ? taxaEntregaValor : 0;
+  const taxaEntrega =
+    modoEntrega === 'entrega' && taxaEntregaTipo === 'fixa'
+      ? taxaEntregaValor
+      : modoEntrega === 'entrega' && taxaEntregaTipo === 'por_km' && freteCalculado !== null
+      ? freteCalculado
+      : 0;
   const totalComEntrega = total + taxaEntrega - desconto;
 
   async function aplicarCupom() {
@@ -116,8 +160,6 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
     setCupomMsg(null);
   }
 
-  // Quando o cliente muda a data, recalcula a hora mínima e reseta o
-  // campo de hora se o valor atual ficou abaixo do novo mínimo.
   function handleDataChange(novaData: string) {
     setData(novaData);
     const min = horaMinima(novaData, antecedenciaMinimaHoras);
@@ -133,6 +175,10 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
     }
     if (modoEntrega === 'entrega' && !endereco.trim()) {
       setErro('Preenche o endereço de entrega.');
+      return;
+    }
+    if (modoEntrega === 'entrega' && taxaEntregaTipo === 'por_km' && freteCalculado === null) {
+      setErro('Aguarda o cálculo do frete antes de continuar (ou confere se o endereço está completo).');
       return;
     }
     if (modoPedido === 'agendado') {
@@ -255,7 +301,6 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
             </ul>
           ) : (
             <div className="space-y-4">
-              {/* Seletor retirada / entrega — só aparece se a loja aceita os dois */}
               {aceitaRetirada && aceitaEntrega && (
                 <div className="flex gap-2">
                   <button
@@ -288,11 +333,26 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
                   <input
                     value={endereco}
                     onChange={(e) => setEndereco(e.target.value)}
-                    placeholder="Rua, número, bairro"
+                    placeholder="Rua, número, bairro, cidade"
                     className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
                   />
                   {taxaEntregaTipo === 'combinado' && (
                     <p className="mt-1 text-xs text-tinta-suave">Taxa de entrega a combinar com a loja.</p>
+                  )}
+                  {taxaEntregaTipo === 'por_km' && (
+                    <div className="mt-1.5">
+                      {calculandoFrete && (
+                        <p className="text-xs text-tinta-suave">Calculando frete...</p>
+                      )}
+                      {!calculandoFrete && freteCalculado !== null && distanciaKm !== null && (
+                        <p className="text-xs text-emerald-600">
+                          {distanciaKm.toFixed(1)} km — frete de R$ {freteCalculado.toFixed(2).replace('.', ',')}
+                        </p>
+                      )}
+                      {!calculandoFrete && erroFrete && (
+                        <p className="text-xs text-acento">{erroFrete}</p>
+                      )}
+                    </div>
                   )}
                 </Campo>
               )}
@@ -332,7 +392,6 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
 
         <div className="space-y-3 border-t border-tinta/10 px-6 py-4">
           <div className="space-y-1">
-            {/* Campo de cupom */}
             {etapa === 'carrinho' && (
               <div className="mb-3 flex gap-2">
                 <input
@@ -372,6 +431,12 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
               <div className="flex items-center justify-between text-sm">
                 <span className="text-tinta-suave">Taxa de entrega</span>
                 <span className="text-tinta-suave italic">a combinar</span>
+              </div>
+            )}
+            {modoEntrega === 'entrega' && taxaEntregaTipo === 'por_km' && freteCalculado !== null && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-tinta-suave">Taxa de entrega ({distanciaKm?.toFixed(1)} km)</span>
+                <span className="text-tinta">R$ {freteCalculado.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
             {desconto > 0 && (

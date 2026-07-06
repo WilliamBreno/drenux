@@ -81,8 +81,10 @@ func main() {
 
 	variacaoService := service.NewVariacaoService(db)
 	variacaoHandler := handler.NewVariacaoHandler(variacaoService)
+	
+	distanciaService := service.NewDistanciaService()
 
-	pedidoService := service.NewPedidoService(db)
+	pedidoService := service.NewPedidoService(db, distanciaService)
 	pedidoHandler := handler.NewPedidoHandler(pedidoService)
 
 	// WhatsApp não é mais fatal: se não estiver pareado (ou se der
@@ -102,8 +104,9 @@ func main() {
 	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender)
 	stripeHandler := handler.NewStripeHandler(stripeService, cfg.FrontendURLs[0])
 
+
 	lojaService := service.NewLojaService(db)
-	lojaHandler := handler.NewLojaHandler(lojaService)
+	lojaHandler := handler.NewLojaHandler(lojaService, distanciaService)
 
 	dashboardService := service.NewDashboardService(db)
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
@@ -114,6 +117,8 @@ func main() {
 
 	relatorioService := service.NewRelatorioService(db, whatsappSender)
 	relatorioHandler := handler.NewRelatorioHandler(relatorioService, cfg.CronSecret)
+	
+	freteHandler := handler.NewFreteHandler(lojaService, distanciaService)
 
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
 	router.POST("/auth/login", authHandler.Login)
@@ -135,8 +140,8 @@ func main() {
 		c.Set("loja_id_publico", loja.ID)
 		cupomHandler.Validar(c)
 	})
+	router.POST("/lojas/:slug/cotar-frete", freteHandler.Cotar)
 	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
-
 	// Webhook da Stripe — chamado pela Stripe, não por usuário. Validado
 	// por assinatura, não por JWT.
 	router.POST("/webhooks/stripe", stripeHandler.Webhook)

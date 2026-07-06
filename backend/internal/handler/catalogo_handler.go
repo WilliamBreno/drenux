@@ -88,4 +88,5 @@ func (h *CatalogoHandler) BuscarHistorico(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, pedidos)
+
 }
