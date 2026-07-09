@@ -92,6 +92,16 @@ func (r *PedidoRepository) AtualizarLocalizacaoEntregador(pedidoID uint, latitud
 	}).Error
 }
 
+// AtualizarComissaoAfiliado registra quanto foi repassado ao afiliado
+// nesse pedido e o ID da Transfer no Stripe (útil pra auditoria e pra
+// nunca repassar em duplicidade se o webhook disparar mais de uma vez).
+func (r *PedidoRepository) AtualizarComissaoAfiliado(pedidoID uint, comissao float64, transferID string) error {
+	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Updates(map[string]interface{}{
+		"comissao_afiliado":    comissao,
+		"afiliado_transfer_id": transferID,
+	}).Error
+}
+
 // ResumoSemana agrega os pedidos pagos de uma loja em um período.
 type ResumoSemana struct {
 	TotalPedidos  int

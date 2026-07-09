@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cadastrar } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import { Campo } from '../components/Campo';
@@ -7,6 +7,8 @@ import { Campo } from '../components/Campo';
 export function Cadastro() {
   const navigate = useNavigate();
   const setToken = useAuthStore((state) => state.setToken);
+  const [searchParams] = useSearchParams();
+  const codigoAfiliado = searchParams.get('ref') || undefined;
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -20,7 +22,13 @@ export function Cadastro() {
     setEnviando(true);
     setErro(null);
     try {
-      const { token } = await cadastrar({ nome, email, senha, nome_loja: nomeLoja });
+      const { token } = await cadastrar({
+        nome,
+        email,
+        senha,
+        nome_loja: nomeLoja,
+        codigo_afiliado: codigoAfiliado,
+      });
       setToken(token);
       navigate('/admin');
     } catch {

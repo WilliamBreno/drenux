@@ -5,6 +5,7 @@ interface CadastroInput {
   email: string;
   senha: string;
   nome_loja: string;
+  codigo_afiliado?: string;
 }
 
 interface LoginInput {

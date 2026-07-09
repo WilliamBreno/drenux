@@ -27,12 +27,6 @@ func main() {
 	}
 	log.Println("conectado ao banco com sucesso")
 
-	// AutoMigrate cria as tabelas que ainda não existem e adiciona colunas
-	// novas que apareçam no struct. A ordem importa por causa das chaves
-	// estrangeiras: Usuario antes de Loja (Loja referencia Usuario), Loja
-	// antes de Categoria (Categoria referencia Loja), Categoria antes de
-	// Produto (Produto referencia Categoria), Pedido depois de Loja, e
-	// ItemPedido por último (referencia Pedido).
 	if err := db.AutoMigrate(
 		&domain.Usuario{},
 		&domain.Loja{},
@@ -44,6 +38,7 @@ func main() {
 		&domain.Pedido{},
 		&domain.ItemPedido{},
 		&domain.SolicitacaoEntrega{},
+		&domain.Afiliado{},
 	); err != nil {
 		log.Fatalf("erro ao migrar o banco: %v", err)
 	}
@@ -51,9 +46,6 @@ func main() {
 
 	router := gin.Default()
 
-	// CORS: sem isso, o navegador bloqueia o frontend (rodando numa porta
-	// diferente, ex: 5173) de chamar essa API (porta 8080) — é uma regra
-	// de segurança do próprio navegador, não da nossa aplicação.
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.FrontendURLs,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -82,10 +74,6 @@ func main() {
 
 	pedidoService := service.NewPedidoService(db, distanciaService)
 
-	// WhatsApp não é mais fatal: se não estiver pareado (ou se der
-	// qualquer erro), o servidor sobe mesmo assim — só fica sem mandar
-	// notificação até o pareamento ser refeito. Cardápio, carrinho e
-	// pagamento não podem depender disso pra funcionar.
 	var whatsappSender notification.NotificationSender
 	ws, err := notification.NewWhatsmeowSender(context.Background(), cfg.DatabaseURL)
 	if err != nil {
@@ -128,10 +116,16 @@ func main() {
 	guardadosHandler := handler.NewGuardadosHandler(guardadosService)
 	solicitacaoHandler := handler.NewSolicitacaoHandler(repository.NewSolicitacaoEntregaRepository(db))
 
+	// Sistema de afiliados (comissão automática via Stripe Transfer)
+	afiliadoService := service.NewAfiliadoService(db, cfg.JWTSecret, cfg.StripeSecretKey)
+	afiliadoHandler := handler.NewAfiliadoHandler(afiliadoService, cfg.FrontendURLs[0])
+
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
 	router.POST("/auth/login", authHandler.Login)
 	router.POST("/auth/esqueci-senha", authHandler.EsqueciSenha)
 	router.POST("/auth/redefinir-senha", authHandler.RedefinirSenha)
+
+	router.POST("/afiliados/login", afiliadoHandler.Login)
 
 	// Rotas públicas — sem autenticação. É como o cliente final acessa o
 	// cardápio e faz um pedido numa loja específica, pelo slug.
@@ -151,9 +145,7 @@ func main() {
 	router.POST("/lojas/:slug/cotar-frete", freteHandler.Cotar)
 	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
 
-	// Fluxo "guardar e entregar depois" (Fase 3) — itens comprados e
-	// guardados voltam aqui pra virar uma entrega, identificados pelo
-	// telefone do cliente, mesmo padrão do histórico e do rastreamento.
+	// Fluxo "guardar e entregar depois" (Fase 3)
 	router.GET("/lojas/:slug/guardados", guardadosHandler.Listar)
 	router.POST("/lojas/:slug/guardados/cotar-frete", guardadosHandler.CotarFrete)
 	router.POST("/lojas/:slug/guardados/solicitar-entrega", guardadosHandler.SolicitarEntrega)
@@ -165,7 +157,6 @@ func main() {
 	router.POST("/webhooks/stripe", stripeHandler.Webhook)
 
 	// Relatório semanal — chamado pelo cron-job.org todo domingo.
-	// Protegido por X-Cron-Secret, não por JWT.
 	router.POST("/relatorio/semanal", relatorioHandler.EnviarSemanal)
 
 	// Grupo de rotas administrativas — tudo aqui dentro exige token válido.
@@ -198,8 +189,6 @@ func main() {
 	admin.POST("/fotos/:produtoId", fotoHandler.Adicionar)
 	admin.DELETE("/fotos/:produtoId/:fotoId", fotoHandler.Deletar)
 
-	// Variações num sub-grupo separado pra evitar conflito com :id do produto.
-	// O Gin não permite :id e :produtoId no mesmo prefixo.
 	variacoes := admin.Group("/variacoes")
 	variacoes.GET("/:produtoId", variacaoHandler.Listar)
 	variacoes.POST("/:produtoId", variacaoHandler.Criar)
@@ -219,6 +208,13 @@ func main() {
 
 	admin.GET("/loja", lojaHandler.Buscar)
 	admin.PUT("/loja", lojaHandler.AtualizarConfiguracoes)
+
+	// Grupo de rotas do afiliado — token próprio (claim "afiliado_id"),
+	// separado do token de dono de loja.
+	afiliado := router.Group("/afiliado")
+	afiliado.Use(middleware.AfiliadoRequired(cfg.JWTSecret))
+	afiliado.GET("/dashboard", afiliadoHandler.Dashboard)
+	afiliado.POST("/stripe/onboarding", afiliadoHandler.IniciarOnboarding)
 
 	// Health check: confirma que o servidor está de pé E que o banco está
 	// respondendo.

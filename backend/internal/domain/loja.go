@@ -45,14 +45,12 @@ type Loja struct {
 	MensagemPausa string `gorm:"size:300" json:"mensagem_pausa"`
 
 	// Tema visual do cardápio público — não afeta o painel admin.
-	// Valores válidos: kraft, oceano, floresta, rosa, noite, carvao, brasa, hortela
 	Tema string `gorm:"size:20;default:'kraft'" json:"tema"`
 
 	// Valor mínimo de pedido — 0 = sem restrição.
 	ValorMinimoPedido float64 `gorm:"default:0" json:"valor_minimo_pedido"`
 
 	// Modos de recebimento — o dono define quais aceita.
-	// Pelo menos um dos dois deve estar ativo.
 	AceitaRetirada bool    `gorm:"default:true" json:"aceita_retirada"`
 	AceitaEntrega  bool    `gorm:"default:false" json:"aceita_entrega"`
 	Endereco       string  `gorm:"size:300" json:"endereco"`
@@ -63,11 +61,9 @@ type Loja struct {
 	// geocodificação do endereço da loja — usados pra decidir se um
 	// destino de entrega de itens guardados está na mesma região
 	// (cálculo por km) ou fora dela (estimativa por peso+distância).
-	// Vêm como texto livre do Nominatim (ex: "Sergipe", não "SE") — o
-	// que importa é bater com o mesmo formato retornado na geocodificação
-	// do endereço de destino, não seguir um padrão de sigla.
 	Cidade string `gorm:"size:100" json:"cidade"`
 	Estado string `gorm:"size:100" json:"estado"`
+
 	// Taxa de entrega:
 	// "fixa"      → valor fixo definido pelo dono, somado ao total no checkout
 	// "combinado" → cliente informa o endereço, dono combina o valor fora do sistema
@@ -77,13 +73,16 @@ type Loja struct {
 	TaxaEntregaPorKm float64 `gorm:"default:0" json:"taxa_entrega_por_km"`
 
 	// Mantido por compatibilidade — substituído por ModoPedido.
-	// Será removido numa migration futura.
 	PermiteMesmoDia bool `gorm:"default:false" json:"permite_mesmo_dia"`
 
 	// AceitaGuardarEntregar: opt-in explícito pro fluxo de "guardar e
 	// entregar depois" — a maioria das lojas de comida não vai querer
 	// isso, então fica desligado por padrão.
 	AceitaGuardarEntregar bool `gorm:"default:false" json:"aceita_guardar_entregar"`
+
+	// AfiliadoID: vínculo permanente com quem indicou essa loja, capturado
+	// no cadastro via ?ref=CODIGO. Nunca muda depois de definido.
+	AfiliadoID *uint `gorm:"index" json:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

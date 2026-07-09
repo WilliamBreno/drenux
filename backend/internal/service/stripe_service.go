@@ -24,6 +24,11 @@ import (
 // conectada, não a plataforma.
 const TaxaPlataformaPercentual = 8.0
 
+// ComissaoAfiliadoPercentual é o repasse automático pro afiliado que
+// indicou a loja, quando existir — sai do valor bruto do pedido, sem
+// depender de aprovação manual. Ver internal/domain/afiliado.go.
+const ComissaoAfiliadoPercentual = 3.01
+
 type StripeService struct {
 	client             *stripe.Client
 	webhookSecret      string
@@ -31,6 +36,7 @@ type StripeService struct {
 	lojaRepo           *repository.LojaRepository
 	pedidoRepo         *repository.PedidoRepository
 	solicitacaoRepo    *repository.SolicitacaoEntregaRepository
+	afiliadoRepo       *repository.AfiliadoRepository
 	notificationSender notification.NotificationSender
 }
 
@@ -42,6 +48,7 @@ func NewStripeService(secretKey, webhookSecret string, db *gorm.DB, notification
 		lojaRepo:           repository.NewLojaRepository(db),
 		pedidoRepo:         repository.NewPedidoRepository(db),
 		solicitacaoRepo:    repository.NewSolicitacaoEntregaRepository(db),
+		afiliadoRepo:       repository.NewAfiliadoRepository(db),
 		notificationSender: notificationSender,
 	}
 }
@@ -119,9 +126,6 @@ func (s *StripeService) CriarCheckout(ctx context.Context, pedidoID uint, fronte
 		return "", errors.New("essa loja ainda não conectou uma conta de pagamento")
 	}
 
-	// Depois de pagar (ou cancelar), o cliente volta pro próprio
-	// cardápio da loja — sucesso mostra um aviso no topo (?pago=1), sem
-	// precisar de uma página dedicada nova.
 	successURL := fmt.Sprintf("%s/%s?pago=1", frontendURL, loja.Slug)
 	cancelURL := fmt.Sprintf("%s/%s", frontendURL, loja.Slug)
 
@@ -139,8 +143,6 @@ func (s *StripeService) CriarCheckout(ctx context.Context, pedidoID uint, fronte
 		})
 	}
 
-	// application_fee_amount é em centavos, igual o resto dos valores
-	// monetários na API da Stripe.
 	taxaPlataforma := int64(math.Round(pedido.Total * 100 * TaxaPlataformaPercentual / 100))
 
 	params := &stripe.CheckoutSessionCreateParams{
@@ -164,9 +166,6 @@ func (s *StripeService) CriarCheckout(ctx context.Context, pedidoID uint, fronte
 		return "", fmt.Errorf("criando sessão de checkout: %w", err)
 	}
 
-	// Guarda o ID da sessão pra rastreabilidade. Se isso falhar, não
-	// interrompe o fluxo — o cliente já tem a URL de pagamento válida, e
-	// o webhook encontra o pedido certo de qualquer forma via metadata.
 	if err := s.pedidoRepo.AtualizarStripeSessionID(pedido.ID, session.ID); err != nil {
 		fmt.Printf("aviso: não foi possível salvar stripe_session_id do pedido %d: %v\n", pedido.ID, err)
 	}
@@ -247,8 +246,6 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 	}
 
 	if event.Type != "checkout.session.completed" {
-		// Outros tipos de evento (a Stripe manda vários) não interessam
-		// pra esse fluxo — ignora sem erro.
 		return nil
 	}
 
@@ -290,9 +287,7 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 }
 
 // notificarFretePago avisa o dono da loja que o frete de uma entrega de
-// itens guardados foi pago e já pode ser preparado. O cliente não é
-// avisado por WhatsApp nessa fase — ele acabou de concluir o pagamento no
-// próprio fluxo, já sabe que deu certo.
+// itens guardados foi pago e já pode ser preparado.
 func (s *StripeService) notificarFretePago(solicitacaoID uint) {
 	if s.notificationSender == nil {
 		log.Printf("WhatsApp não conectado — frete da solicitação %d foi pago mas a notificação foi pulada", solicitacaoID)
@@ -326,7 +321,8 @@ func (s *StripeService) notificarFretePago(solicitacaoID uint) {
 }
 
 // processarPosPagamento roda em goroutine depois do pagamento confirmado:
-// subtrai estoque, envia alertas de estoque baixo e notifica via WhatsApp.
+// subtrai estoque, envia alertas de estoque baixo, repassa comissão de
+// afiliado (se houver) e notifica via WhatsApp.
 func (s *StripeService) processarPosPagamento(pedidoID uint) {
 	pedido, err := s.pedidoRepo.BuscarPorID(pedidoID)
 	if err != nil {
@@ -340,9 +336,16 @@ func (s *StripeService) processarPosPagamento(pedidoID uint) {
 		return
 	}
 
+	// Repassa a comissão pro afiliado que indicou essa loja, se houver.
+	// Fica antes do loop de estoque de propósito — mesmo que o estoque
+	// dê algum problema pontual num item, o repasse financeiro não deve
+	// ficar refém disso.
+	if loja.AfiliadoID != nil {
+		s.transferirComissaoAfiliado(pedido, loja)
+	}
+
 	produtoRepo := repository.NewProdutoRepository(s.db)
 
-	// Subtrai estoque de cada item e dispara alerta se necessário
 	var estoqueErr error
 	_ = estoqueErr
 	for _, item := range pedido.Itens {
@@ -395,6 +398,51 @@ func (s *StripeService) processarPosPagamento(pedidoID uint) {
 	}
 
 	s.notificarPagamento(pedidoID)
+}
+
+// transferirComissaoAfiliado repassa 3,01% do total do pedido pra conta
+// Stripe Connect do afiliado que indicou essa loja, usando o saldo já
+// retido pela plataforma via application_fee_amount. Se o afiliado ainda
+// não conectou uma conta Stripe, o repasse é pulado (fica só logado) —
+// não bloqueia o resto do processamento do pedido.
+func (s *StripeService) transferirComissaoAfiliado(pedido *domain.Pedido, loja *domain.Loja) {
+	if loja.AfiliadoID == nil {
+		return
+	}
+
+	afiliado, err := s.afiliadoRepo.BuscarPorID(*loja.AfiliadoID)
+	if err != nil {
+		log.Printf("aviso: afiliado %d não encontrado pro pedido %d: %v", *loja.AfiliadoID, pedido.ID, err)
+		return
+	}
+	if afiliado.StripeAccountID == "" {
+		log.Printf("aviso: afiliado %d ainda não conectou conta Stripe — repasse do pedido %d pulado por enquanto", afiliado.ID, pedido.ID)
+		return
+	}
+
+	valorComissao := pedido.Total * ComissaoAfiliadoPercentual / 100
+	valorCentavos := int64(math.Round(valorComissao * 100))
+	if valorCentavos <= 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	params := &stripe.TransferCreateParams{
+		Amount:      stripe.Int64(valorCentavos),
+		Currency:    stripe.String(string(stripe.CurrencyBRL)),
+		Destination: stripe.String(afiliado.StripeAccountID),
+	}
+	transfer, err := s.client.V1Transfers.Create(ctx, params)
+	if err != nil {
+		log.Printf("falha ao repassar comissão de afiliado pro pedido %d: %v", pedido.ID, err)
+		return
+	}
+
+	if err := s.pedidoRepo.AtualizarComissaoAfiliado(pedido.ID, valorComissao, transfer.ID); err != nil {
+		log.Printf("aviso: não foi possível salvar registro de comissão do pedido %d: %v", pedido.ID, err)
+	}
 }
 
 // notificarPagamento dispara as duas mensagens de WhatsApp em

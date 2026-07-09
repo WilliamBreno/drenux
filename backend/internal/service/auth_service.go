@@ -1,23 +1,24 @@
 package service
 
 import (
-	"errors"
-	"fmt"
-	"time"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"log"
+	"time"
 
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
+	"github.com/WilliamBreno/cardapio-backend/internal/notification"
 	"github.com/WilliamBreno/cardapio-backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"github.com/WilliamBreno/cardapio-backend/internal/notification"
 )
 
 type AuthService struct {
-	db        *gorm.DB
-	jwtSecret string
+	db          *gorm.DB
+	jwtSecret   string
 	emailSender *notification.EmailSender
 	frontendURL string
 }
@@ -27,15 +28,18 @@ func NewAuthService(db *gorm.DB, jwtSecret string, emailSender *notification.Ema
 }
 
 type CadastroInput struct {
-	Nome     string
-	Email    string
-	Senha    string
-	NomeLoja string
+	Nome           string
+	Email          string
+	Senha          string
+	NomeLoja       string
+	CodigoAfiliado string // opcional — vem do ?ref=CODIGO capturado no frontend
 }
 
 // Cadastrar cria o usuário, a loja dele e as categorias padrão (Salgados,
 // Doces) tudo dentro de uma única transação: se qualquer passo falhar,
-// nada fica salvo pela metade.
+// nada fica salvo pela metade. Se vier um CodigoAfiliado válido, a loja
+// já nasce vinculada a esse afiliado — vínculo permanente, nunca muda
+// depois.
 func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 	senhaHash, err := bcrypt.GenerateFromPassword([]byte(input.Senha), bcrypt.DefaultCost)
 	if err != nil {
@@ -53,6 +57,7 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 		usuarioRepo := repository.NewUsuarioRepository(tx)
 		lojaRepo := repository.NewLojaRepository(tx)
 		categoriaRepo := repository.NewCategoriaRepository(tx)
+		afiliadoRepo := repository.NewAfiliadoRepository(tx)
 
 		if err := usuarioRepo.Criar(&usuario); err != nil {
 			return fmt.Errorf("não foi possível criar o usuário (email já cadastrado?): %w", err)
@@ -68,6 +73,20 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 			Nome:      input.NomeLoja,
 			Slug:      slug,
 		}
+
+		// Se veio um código de afiliado, resolve e vincula. Um código
+		// inválido/inexistente não deve travar o cadastro — só ignora
+		// silenciosamente e loga, pra não quebrar a experiência de quem
+		// está criando a loja por causa de um link mal formado.
+		if input.CodigoAfiliado != "" {
+			afiliado, err := afiliadoRepo.BuscarPorCodigo(input.CodigoAfiliado)
+			if err != nil {
+				log.Printf("aviso: código de afiliado %q não encontrado no cadastro da loja %q", input.CodigoAfiliado, input.NomeLoja)
+			} else {
+				loja.AfiliadoID = &afiliado.ID
+			}
+		}
+
 		if err := lojaRepo.Criar(&loja); err != nil {
 			return fmt.Errorf("criando loja: %w", err)
 		}
@@ -150,7 +169,6 @@ func (s *AuthService) EsqueciSenha(email string) error {
 
 	usuario, err := usuarioRepo.BuscarPorEmail(email)
 	if err != nil {
-		// Email não existe — não é erro do ponto de vista de quem chamou.
 		return nil
 	}
 
@@ -166,7 +184,7 @@ func (s *AuthService) EsqueciSenha(email string) error {
 	}
 
 	if s.emailSender == nil {
-		return nil // sem serviço de email configurado, não derruba a request
+		return nil
 	}
 
 	link := fmt.Sprintf("%s/redefinir-senha?token=%s", s.frontendURL, token)
@@ -177,7 +195,6 @@ func (s *AuthService) EsqueciSenha(email string) error {
 	return nil
 }
 
-// RedefinirSenha valida o token (existe e não expirou) e troca a senha.
 func (s *AuthService) RedefinirSenha(token, novaSenha string) error {
 	usuarioRepo := repository.NewUsuarioRepository(s.db)
 

@@ -45,6 +45,13 @@ type Pedido struct {
 	Desconto    float64 `gorm:"default:0" json:"desconto"`
 
 	StripeSessionID        string       `gorm:"size:255" json:"-"`
+
+	// Comissão repassada automaticamente pro afiliado que indicou a loja
+	// (se houver), via Stripe Transfer. AfiliadoTransferID guarda o ID
+	// da Transfer no Stripe — serve de trava contra repasse em
+	// duplicidade se o webhook de pagamento disparar mais de uma vez.
+	ComissaoAfiliado   float64 `gorm:"default:0" json:"-"`
+	AfiliadoTransferID string  `gorm:"size:100" json:"-"`
 	Itens                  []ItemPedido `gorm:"foreignKey:PedidoID" json:"itens"`
 	CreatedAt              time.Time    `json:"created_at"`
 	UpdatedAt              time.Time    `json:"updated_at"`
