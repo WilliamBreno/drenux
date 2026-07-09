@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { rastrearPedido } from '../api/rastreamento';
+import { rastrearPedido, rastrearSolicitacao } from '../api/rastreamento';
 
 // O react-leaflet quebra o ícone padrão do marcador por causa de como o
 // Vite/webpack lida com os caminhos dos assets — esse ajuste manual é o
@@ -21,8 +21,11 @@ const INTERVALO_POLL_MS = 10_000; // atualiza o mapa a cada 10s
 export function RastrearPedido() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const telefone = searchParams.get('telefone') || '';
   const pedidoId = Number(id);
+  const ehSolicitacao = location.pathname.includes('/solicitacao/');
+  const buscarRastreamento = ehSolicitacao ? rastrearSolicitacao : rastrearPedido;
 
   const [dados, setDados] = useState<{
     status_entrega: string;
@@ -44,7 +47,7 @@ export function RastrearPedido() {
 
     async function buscar() {
       try {
-        const resultado = await rastrearPedido(slug!, pedidoId, telefone);
+        const resultado = await buscarRastreamento(slug!, pedidoId, telefone);
         if (!cancelado) {
           setDados(resultado);
           setErro(null);

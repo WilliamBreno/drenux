@@ -30,6 +30,7 @@ type StripeService struct {
 	db                 *gorm.DB
 	lojaRepo           *repository.LojaRepository
 	pedidoRepo         *repository.PedidoRepository
+	solicitacaoRepo    *repository.SolicitacaoEntregaRepository
 	notificationSender notification.NotificationSender
 }
 
@@ -40,6 +41,7 @@ func NewStripeService(secretKey, webhookSecret string, db *gorm.DB, notification
 		db:                 db,
 		lojaRepo:           repository.NewLojaRepository(db),
 		pedidoRepo:         repository.NewPedidoRepository(db),
+		solicitacaoRepo:    repository.NewSolicitacaoEntregaRepository(db),
 		notificationSender: notificationSender,
 	}
 }
@@ -172,6 +174,69 @@ func (s *StripeService) CriarCheckout(ctx context.Context, pedidoID uint, fronte
 	return session.URL, nil
 }
 
+// CriarCheckoutFrete monta uma sessão de pagamento Stripe Checkout pro
+// frete de uma SolicitacaoEntrega (itens que já foram pagos e guardados —
+// agora o cliente está pagando só o transporte). Sem
+// ApplicationFeeAmount: a comissão da plataforma incide só sobre o valor
+// dos produtos, nunca sobre o frete, que é repasse puro pra loja.
+func (s *StripeService) CriarCheckoutFrete(ctx context.Context, solicitacaoID uint, frontendURL string) (string, error) {
+	solicitacao, err := s.solicitacaoRepo.BuscarPorID(solicitacaoID)
+	if err != nil {
+		return "", errors.New("solicitação de entrega não encontrada")
+	}
+	if solicitacao.Status != domain.StatusSolicitacaoAguardandoPagamento {
+		return "", errors.New("essa solicitação já foi paga ou cancelada")
+	}
+
+	loja, err := s.lojaRepo.BuscarPorID(solicitacao.LojaID)
+	if err != nil {
+		return "", errors.New("loja não encontrada")
+	}
+	if loja.StripeAccountID == "" {
+		return "", errors.New("essa loja ainda não conectou uma conta de pagamento")
+	}
+
+	successURL := fmt.Sprintf("%s/%s?frete_pago=1", frontendURL, loja.Slug)
+	cancelURL := fmt.Sprintf("%s/%s", frontendURL, loja.Slug)
+
+	params := &stripe.CheckoutSessionCreateParams{
+		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
+			{
+				Quantity: stripe.Int64(1),
+				PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
+					Currency:   stripe.String("brl"),
+					UnitAmount: stripe.Int64(int64(math.Round(solicitacao.ValorFrete * 100))),
+					ProductData: &stripe.CheckoutSessionCreateLineItemPriceDataProductDataParams{
+						Name: stripe.String("Frete — entrega de itens guardados"),
+					},
+				},
+			},
+		},
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+		PaymentIntentData: &stripe.CheckoutSessionCreatePaymentIntentDataParams{
+			TransferData: &stripe.CheckoutSessionCreatePaymentIntentDataTransferDataParams{
+				Destination: stripe.String(loja.StripeAccountID),
+			},
+		},
+		Metadata: map[string]string{
+			"solicitacao_id": strconv.FormatUint(uint64(solicitacao.ID), 10),
+		},
+	}
+
+	session, err := s.client.V1CheckoutSessions.Create(ctx, params)
+	if err != nil {
+		return "", fmt.Errorf("criando sessão de checkout do frete: %w", err)
+	}
+
+	if err := s.solicitacaoRepo.AtualizarStripeSessionID(solicitacao.ID, session.ID); err != nil {
+		fmt.Printf("aviso: não foi possível salvar stripe_session_id da solicitação %d: %v\n", solicitacao.ID, err)
+	}
+
+	return session.URL, nil
+}
+
 // ProcessarWebhook valida a assinatura do evento (garante que veio
 // mesmo da Stripe, não de alguém forjando uma requisição) e, se for uma
 // confirmação de pagamento, marca o pedido correspondente como pago.
@@ -192,9 +257,21 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 		return fmt.Errorf("lendo dados do evento: %w", err)
 	}
 
+	if solicitacaoIDStr, ok := session.Metadata["solicitacao_id"]; ok {
+		solicitacaoID, err := strconv.ParseUint(solicitacaoIDStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("solicitacao_id inválido nos metadados: %w", err)
+		}
+		if err := s.solicitacaoRepo.AtualizarStatus(uint(solicitacaoID), domain.StatusSolicitacaoPaga); err != nil {
+			return fmt.Errorf("atualizando status da solicitação %d: %w", solicitacaoID, err)
+		}
+		go s.notificarFretePago(uint(solicitacaoID))
+		return nil
+	}
+
 	pedidoIDStr, ok := session.Metadata["pedido_id"]
 	if !ok {
-		return errors.New("evento sem pedido_id nos metadados")
+		return errors.New("evento sem pedido_id nem solicitacao_id nos metadados")
 	}
 
 	pedidoID, err := strconv.ParseUint(pedidoIDStr, 10, 64)
@@ -210,6 +287,42 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 	go s.processarPosPagamento(uint(pedidoID))
 
 	return nil
+}
+
+// notificarFretePago avisa o dono da loja que o frete de uma entrega de
+// itens guardados foi pago e já pode ser preparado. O cliente não é
+// avisado por WhatsApp nessa fase — ele acabou de concluir o pagamento no
+// próprio fluxo, já sabe que deu certo.
+func (s *StripeService) notificarFretePago(solicitacaoID uint) {
+	if s.notificationSender == nil {
+		log.Printf("WhatsApp não conectado — frete da solicitação %d foi pago mas a notificação foi pulada", solicitacaoID)
+		return
+	}
+
+	solicitacao, err := s.solicitacaoRepo.BuscarPorID(solicitacaoID)
+	if err != nil {
+		log.Printf("não foi possível recarregar solicitação %d pra notificar: %v", solicitacaoID, err)
+		return
+	}
+
+	loja, err := s.lojaRepo.BuscarPorID(solicitacao.LojaID)
+	if err != nil {
+		log.Printf("não foi possível carregar loja da solicitação %d pra notificar: %v", solicitacaoID, err)
+		return
+	}
+	if loja.WhatsappNumero == "" {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	texto := fmt.Sprintf(
+		"📦 Frete pago — %s\n\nO cliente %s pagou o frete pra receber os itens guardados. Endereço: %s",
+		loja.Nome, solicitacao.ClienteNome, solicitacao.EnderecoEntrega,
+	)
+	if err := s.notificationSender.EnviarTextoAdmin(ctx, loja.WhatsappNumero, texto); err != nil {
+		log.Printf("falha ao notificar admin do frete pago (solicitação %d): %v", solicitacaoID, err)
+	}
 }
 
 // processarPosPagamento roda em goroutine depois do pagamento confirmado:

@@ -29,9 +29,27 @@ type Produto struct {
 	EstoqueAtual  *int `gorm:"default:null" json:"estoque_atual"`
 	EstoqueAlerta *int `gorm:"default:null" json:"estoque_alerta"`
 
+	// TipoProduto distingue itens perecíveis (comida) de mercadoria em
+	// geral (roupas, artesanato etc.) — só "mercadoria" pode ser usado
+	// no fluxo de "guardar e entregar depois", já que reter comida por
+	// tempo indeterminado é um risco de segurança alimentar.
+	TipoProduto TipoProduto `gorm:"size:20;default:'alimenticio'" json:"tipo_produto"`
+
+	// PesoGramas é obrigatório quando TipoProduto == mercadoria — usado
+	// pra estimar o frete quando o destino fica fora da região da loja.
+	// nil pra produtos alimentícios (não se aplica).
+	PesoGramas *int `gorm:"default:null" json:"peso_gramas"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type TipoProduto string
+
+const (
+	TipoProdutoAlimenticio TipoProduto = "alimenticio"
+	TipoProdutoMercadoria  TipoProduto = "mercadoria"
+)
 
 func (Produto) TableName() string {
 	return "produtos"

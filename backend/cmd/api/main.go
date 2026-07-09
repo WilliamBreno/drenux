@@ -43,6 +43,7 @@ func main() {
 		&domain.Cupom{},
 		&domain.Pedido{},
 		&domain.ItemPedido{},
+		&domain.SolicitacaoEntrega{},
 	); err != nil {
 		log.Fatalf("erro ao migrar o banco: %v", err)
 	}
@@ -123,6 +124,10 @@ func main() {
 
 	freteHandler := handler.NewFreteHandler(lojaService, distanciaService)
 
+	guardadosService := service.NewGuardadosService(db, distanciaService)
+	guardadosHandler := handler.NewGuardadosHandler(guardadosService)
+	solicitacaoHandler := handler.NewSolicitacaoHandler(repository.NewSolicitacaoEntregaRepository(db))
+
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
 	router.POST("/auth/login", authHandler.Login)
 	router.POST("/auth/esqueci-senha", authHandler.EsqueciSenha)
@@ -145,6 +150,15 @@ func main() {
 	})
 	router.POST("/lojas/:slug/cotar-frete", freteHandler.Cotar)
 	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
+
+	// Fluxo "guardar e entregar depois" (Fase 3) — itens comprados e
+	// guardados voltam aqui pra virar uma entrega, identificados pelo
+	// telefone do cliente, mesmo padrão do histórico e do rastreamento.
+	router.GET("/lojas/:slug/guardados", guardadosHandler.Listar)
+	router.POST("/lojas/:slug/guardados/cotar-frete", guardadosHandler.CotarFrete)
+	router.POST("/lojas/:slug/guardados/solicitar-entrega", guardadosHandler.SolicitarEntrega)
+	router.GET("/lojas/:slug/solicitacoes/:id/rastrear", solicitacaoHandler.Rastrear)
+	router.POST("/solicitacoes/:id/checkout", stripeHandler.CheckoutFrete)
 
 	// Webhook da Stripe — chamado pela Stripe, não por usuário. Validado
 	// por assinatura, não por JWT.
@@ -195,6 +209,10 @@ func main() {
 	admin.GET("/pedidos", pedidoHandler.Listar)
 	admin.PUT("/pedidos/:id/status-entrega", pedidoHandler.AtualizarStatusEntrega)
 	admin.POST("/pedidos/:id/localizacao", pedidoHandler.AtualizarLocalizacao)
+
+	admin.GET("/solicitacoes", solicitacaoHandler.Listar)
+	admin.PUT("/solicitacoes/:id/status-entrega", solicitacaoHandler.AtualizarStatusEntrega)
+	admin.POST("/solicitacoes/:id/localizacao", solicitacaoHandler.AtualizarLocalizacao)
 
 	admin.POST("/stripe/onboarding", stripeHandler.IniciarOnboarding)
 	admin.GET("/stripe/status", stripeHandler.Status)

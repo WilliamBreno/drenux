@@ -28,6 +28,12 @@ export interface FotoProduto {
   ordem: number;
 }
 
+// Tipo do produto: "alimenticio" (perecível, nunca pode ser guardado) ou
+// "mercadoria" (roupas, artesanato etc. — único tipo elegível pro fluxo
+// de "guardar e entregar depois", já que reter comida por tempo
+// indeterminado é um risco de segurança alimentar).
+export type TipoProduto = 'alimenticio' | 'mercadoria';
+
 export interface Produto {
   id: number;
   loja_id: number;
@@ -42,6 +48,8 @@ export interface Produto {
   estoque_atual: number | null;
   estoque_alerta: number | null;
   variacoes?: VariacaoProduto[];
+  tipo_produto: TipoProduto;
+  peso_gramas: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -77,6 +85,7 @@ export interface Loja {
   mensagem_pausa: string;
   aceita_retirada: boolean;
   aceita_entrega: boolean;
+  aceita_guardar_entregar: boolean;
   taxa_entrega_tipo: TaxaEntregaTipo;
   taxa_entrega_valor: number;
   taxa_entrega_base: number;
@@ -84,6 +93,8 @@ export interface Loja {
   endereco: string;
   latitude: number;
   longitude: number;
+  cidade: string;
+  estado: string;
   valor_minimo_pedido: number;
   tema: string;
   created_at: string;
@@ -104,6 +115,7 @@ export interface CardapioPublico {
     mensagem_pausa: string;
     aceita_retirada: boolean;
     aceita_entrega: boolean;
+    aceita_guardar_entregar: boolean;
     taxa_entrega_tipo: TaxaEntregaTipo;
     taxa_entrega_valor: number;
     taxa_entrega_base: number;
@@ -126,6 +138,39 @@ export interface ItemPedido {
   variacao_nome: string;
   quantidade: number;
   preco_unit: number;
+  tipo_produto: TipoProduto;
+  peso_gramas: number;
+  solicitacao_entrega_id: number | null;
+}
+
+// ItemGuardado é um ItemPedido comprado no modo "guardar" que ainda não
+// foi reivindicado por nenhuma entrega — com a data da compra original.
+export interface ItemGuardado extends ItemPedido {
+  guardado_desde: string;
+}
+
+export type StatusSolicitacao = 'aguardando_pagamento' | 'paga' | 'cancelada';
+
+export interface SolicitacaoEntrega {
+  id: number;
+  loja_id: number;
+  cliente_nome: string;
+  cliente_telefone: string;
+  endereco_entrega: string;
+  latitude: number;
+  longitude: number;
+  distancia_km: number;
+  tipo_calculo: string;
+  peso_total_gramas: number;
+  valor_frete: number;
+  status: StatusSolicitacao;
+  itens: ItemPedido[];
+  status_entrega: string;
+  entregador_latitude: number;
+  entregador_longitude: number;
+  entregador_atualizado_em: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Cupom {
@@ -151,7 +196,7 @@ export interface Pedido {
   data_retirada: string;
   status: StatusPedido;
   total: number;
-  modo_entrega: 'retirada' | 'entrega';
+  modo_entrega: 'retirada' | 'entrega' | 'guardar';
   endereco_entrega: string;
   cupom_codigo: string;
   desconto: number;

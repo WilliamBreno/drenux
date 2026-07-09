@@ -15,6 +15,13 @@ type ModoEntrega string
 const (
 	ModoEntregaRetirada ModoEntrega = "retirada"
 	ModoEntregaEntrega  ModoEntrega = "entrega"
+
+	// ModoEntregaGuardar: cliente paga os itens agora mas não os recebe
+	// ainda — a loja guarda por tempo indeterminado. Só disponível pra
+	// produtos do tipo "mercadoria" (ver TipoProduto). O cliente volta
+	// depois pra escolher o que quer receber e paga só o frete nesse
+	// momento (ver domain/solicitacao_entrega.go).
+	ModoEntregaGuardar ModoEntrega = "guardar"
 )
 
 // Pedido representa um pedido feito por um cliente final numa loja.
@@ -37,15 +44,15 @@ type Pedido struct {
 	CupomCodigo string  `gorm:"size:30" json:"cupom_codigo"`
 	Desconto    float64 `gorm:"default:0" json:"desconto"`
 
-	StripeSessionID string       `gorm:"size:255" json:"-"`
-	Itens           []ItemPedido `gorm:"foreignKey:PedidoID" json:"itens"`
-	CreatedAt       time.Time    `json:"created_at"`
-	UpdatedAt       time.Time    `json:"updated_at"`
-	TaxaEntrega float64 `gorm:"default:0" json:"taxa_entrega"`
-	StatusEntrega string `gorm:"size:30;default:''" json:"status_entrega"`
-	EntregadorLatitude     float64    `gorm:"default:0" json:"entregador_latitude"`
-	EntregadorLongitude    float64    `gorm:"default:0" json:"entregador_longitude"`
-	EntregadorAtualizadoEm *time.Time `json:"entregador_atualizado_em"`
+	StripeSessionID        string       `gorm:"size:255" json:"-"`
+	Itens                  []ItemPedido `gorm:"foreignKey:PedidoID" json:"itens"`
+	CreatedAt              time.Time    `json:"created_at"`
+	UpdatedAt              time.Time    `json:"updated_at"`
+	TaxaEntrega            float64      `gorm:"default:0" json:"taxa_entrega"`
+	StatusEntrega          string       `gorm:"size:30;default:''" json:"status_entrega"`
+	EntregadorLatitude     float64      `gorm:"default:0" json:"entregador_latitude"`
+	EntregadorLongitude    float64      `gorm:"default:0" json:"entregador_longitude"`
+	EntregadorAtualizadoEm *time.Time   `json:"entregador_atualizado_em"`
 }
 
 func (Pedido) TableName() string {

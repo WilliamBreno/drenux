@@ -1,13 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { atualizarStatusEntrega, atualizarLocalizacao } from '../../api/rastreamento';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import {
+  atualizarStatusEntrega, atualizarLocalizacao,
+  atualizarStatusEntregaSolicitacao, atualizarLocalizacaoSolicitacao,
+} from '../../api/rastreamento';
 
 const INTERVALO_MS = 25_000; // 25 segundos, conforme definido
 
 export function CompartilharLocalizacao() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const pedidoId = Number(id);
+
+  // Mesma tela serve tanto pra entrega de um pedido normal quanto pra
+  // entrega de itens guardados (SolicitacaoEntrega) — os dois têm os
+  // mesmos campos de rastreamento, só muda qual endpoint chamar.
+  const ehSolicitacao = location.pathname.includes('/solicitacoes/');
+  const atualizarStatus = ehSolicitacao ? atualizarStatusEntregaSolicitacao : atualizarStatusEntrega;
+  const enviarLocalizacao = ehSolicitacao ? atualizarLocalizacaoSolicitacao : atualizarLocalizacao;
+  const rotaVoltar = ehSolicitacao ? '/admin/solicitacoes' : '/admin/pedidos';
 
   const [compartilhando, setCompartilhando] = useState(false);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date | null>(null);
@@ -34,7 +46,7 @@ export function CompartilharLocalizacao() {
     setErro(null);
 
     try {
-      await atualizarStatusEntrega(pedidoId, 'saiu_para_entrega');
+      await atualizarStatus(pedidoId, 'saiu_para_entrega');
     } catch {
       setErro('Não foi possível marcar o pedido como "saiu para entrega". Tenta de novo.');
       return;
@@ -57,7 +69,7 @@ export function CompartilharLocalizacao() {
     async function enviar() {
       if (!posicaoAtualRef.current) return;
       try {
-        await atualizarLocalizacao(pedidoId, posicaoAtualRef.current.lat, posicaoAtualRef.current.lng);
+        await enviarLocalizacao(pedidoId, posicaoAtualRef.current.lat, posicaoAtualRef.current.lng);
         setUltimaAtualizacao(new Date());
       } catch {
         // Falha silenciosa num ciclo só — tenta de novo no próximo, sem
@@ -79,9 +91,9 @@ export function CompartilharLocalizacao() {
   async function marcarEntregue() {
     setFinalizando(true);
     try {
-      await atualizarStatusEntrega(pedidoId, 'entregue');
+      await atualizarStatus(pedidoId, 'entregue');
       pararCompartilhamento();
-      navigate('/admin/pedidos');
+      navigate(rotaVoltar);
     } catch {
       setErro('Não foi possível marcar como entregue. Tenta de novo.');
       setFinalizando(false);
@@ -91,7 +103,7 @@ export function CompartilharLocalizacao() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="font-display text-2xl tracking-wide text-tinta">
-        Entrega do pedido #{pedidoId}
+        {ehSolicitacao ? 'Entrega de itens guardados' : 'Entrega do pedido'} #{pedidoId}
       </h1>
 
       <div className="rounded-2xl bg-superficie p-5 shadow-sm">

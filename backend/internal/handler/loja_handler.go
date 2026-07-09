@@ -51,6 +51,7 @@ type configuracoesRequest struct {
 	ValorMinimoPedido       float64 `json:"valor_minimo_pedido"`
 	Tema                    string  `json:"tema"`
 	Endereco                string  `json:"endereco"`
+	AceitaGuardarEntregar   bool    `json:"aceita_guardar_entregar"`
 }
 
 // AtualizarConfiguracoes atende PUT /admin/loja
@@ -68,20 +69,24 @@ func (h *LojaHandler) AtualizarConfiguracoes(c *gin.Context) {
 		modo = "imediato"
 	}
 
-	// Se o dono escolheu o modo "por_km" e informou um endereço, geocodifica
-	// pra descobrir a latitude/longitude — é isso que o cálculo de frete
-	// usa como ponto de partida. Se a geocodificação falhar, não travamos
-	// o salvamento das outras configurações — só avisamos no log e deixa
-	// lat/lng como 0 (o endpoint de cotação já rejeita cotações nesse caso,
-	// com uma mensagem clara pro dono configurar de novo).
+	// Geocodifica o endereço sempre que informado — não só quando o modo
+	// de taxa é "por_km". O cálculo de frete de itens guardados (fluxo
+	// "guardar e entregar depois") também depende de latitude/longitude/
+	// cidade/estado da loja, independente de como a entrega imediata é
+	// cobrada. Se a geocodificação falhar, não travamos o salvamento das
+	// outras configurações — só avisamos no log e deixa os campos como
+	// estavam (endpoints que dependem disso rejeitam com mensagem clara).
 	var latitude, longitude float64
-	if req.TaxaEntregaTipo == "por_km" && req.Endereco != "" {
-		coordenada, err := h.distanciaService.Geocodificar(req.Endereco)
+	var cidade, estado string
+	if req.Endereco != "" {
+		geo, err := h.distanciaService.GeocodificarDetalhado(req.Endereco)
 		if err != nil {
 			log.Printf("aviso: não foi possível geocodificar endereço da loja %d: %v", lojaID, err)
 		} else {
-			latitude = coordenada.Latitude
-			longitude = coordenada.Longitude
+			latitude = geo.Latitude
+			longitude = geo.Longitude
+			cidade = geo.Cidade
+			estado = geo.Estado
 		}
 	}
 
@@ -103,9 +108,12 @@ func (h *LojaHandler) AtualizarConfiguracoes(c *gin.Context) {
 		TaxaEntregaPorKm:        req.TaxaEntregaPorKm,
 		ValorMinimoPedido:       req.ValorMinimoPedido,
 		Tema:                    req.Tema,
+		AceitaGuardarEntregar:   req.AceitaGuardarEntregar,
 		Endereco:                req.Endereco,
 		Latitude:                latitude,
 		Longitude:               longitude,
+		Cidade:                  cidade,
+		Estado:                  estado,
 	}
 
 	if err := h.lojaService.AtualizarConfiguracoes(lojaID, cfg); err != nil {

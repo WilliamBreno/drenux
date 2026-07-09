@@ -48,6 +48,7 @@ func (h *CatalogoHandler) BuscarCardapio(c *gin.Context) {
 			"mensagem_pausa":            cardapio.Loja.MensagemPausa,
 			"aceita_retirada":           cardapio.Loja.AceitaRetirada,
 			"aceita_entrega":            cardapio.Loja.AceitaEntrega,
+			"aceita_guardar_entregar":   cardapio.Loja.AceitaGuardarEntregar,
 			"taxa_entrega_tipo":         cardapio.Loja.TaxaEntregaTipo,
 			"taxa_entrega_valor":        cardapio.Loja.TaxaEntregaValor,
 			"valor_minimo_pedido":       cardapio.Loja.ValorMinimoPedido,

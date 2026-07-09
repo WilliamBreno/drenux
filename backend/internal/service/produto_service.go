@@ -18,6 +18,8 @@ type ProdutoInput struct {
 	CategoriaID   uint
 	EstoqueAtual  *int
 	EstoqueAlerta *int
+	TipoProduto   domain.TipoProduto
+	PesoGramas    *int
 }
 
 type ProdutoService struct {
@@ -42,6 +44,10 @@ func (s *ProdutoService) Criar(lojaID uint, input ProdutoInput) (*domain.Produto
 	if err := s.validarCategoriaDaLoja(lojaID, input.CategoriaID); err != nil {
 		return nil, err
 	}
+	tipo, peso, err := validarTipoEPeso(input.TipoProduto, input.PesoGramas)
+	if err != nil {
+		return nil, err
+	}
 
 	produto := domain.Produto{
 		LojaID:        lojaID,
@@ -53,6 +59,8 @@ func (s *ProdutoService) Criar(lojaID uint, input ProdutoInput) (*domain.Produto
 		Disponivel:    input.Disponivel,
 		EstoqueAtual:  input.EstoqueAtual,
 		EstoqueAlerta: input.EstoqueAlerta,
+		TipoProduto:   tipo,
+		PesoGramas:    peso,
 	}
 	if err := s.produtoRepo.Criar(&produto); err != nil {
 		return nil, fmt.Errorf("criando produto: %w", err)
@@ -72,6 +80,10 @@ func (s *ProdutoService) Atualizar(lojaID, produtoID uint, input ProdutoInput) (
 	if err := s.validarCategoriaDaLoja(lojaID, input.CategoriaID); err != nil {
 		return nil, err
 	}
+	tipo, peso, err := validarTipoEPeso(input.TipoProduto, input.PesoGramas)
+	if err != nil {
+		return nil, err
+	}
 
 	produto.Nome = input.Nome
 	produto.Descricao = input.Descricao
@@ -81,6 +93,8 @@ func (s *ProdutoService) Atualizar(lojaID, produtoID uint, input ProdutoInput) (
 	produto.CategoriaID = input.CategoriaID
 	produto.EstoqueAtual = input.EstoqueAtual
 	produto.EstoqueAlerta = input.EstoqueAlerta
+	produto.TipoProduto = tipo
+	produto.PesoGramas = peso
 
 	if err := s.produtoRepo.Atualizar(produto); err != nil {
 		return nil, fmt.Errorf("atualizando produto: %w", err)
@@ -109,6 +123,26 @@ func (s *ProdutoService) buscarDaLoja(lojaID, produtoID uint) (*domain.Produto, 
 		return nil, errors.New("produto não pertence a essa loja")
 	}
 	return produto, nil
+}
+
+// validarTipoEPeso garante que produtos "mercadoria" (elegíveis pro fluxo
+// de guardar e entregar depois) sempre tenham um peso definido — sem isso
+// não dá pra estimar frete quando o destino fica fora da região da loja.
+// Produtos alimentícios não usam peso, então o valor recebido é ignorado.
+func validarTipoEPeso(tipo domain.TipoProduto, pesoGramas *int) (domain.TipoProduto, *int, error) {
+	if tipo == "" {
+		tipo = domain.TipoProdutoAlimenticio
+	}
+	if tipo != domain.TipoProdutoAlimenticio && tipo != domain.TipoProdutoMercadoria {
+		return "", nil, errors.New("tipo de produto inválido")
+	}
+	if tipo == domain.TipoProdutoAlimenticio {
+		return tipo, nil, nil
+	}
+	if pesoGramas == nil || *pesoGramas <= 0 {
+		return "", nil, errors.New("produtos do tipo mercadoria exigem um peso (em gramas) maior que zero")
+	}
+	return tipo, pesoGramas, nil
 }
 
 // validarCategoriaDaLoja impede que um produto seja associado a uma

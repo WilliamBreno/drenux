@@ -57,7 +57,8 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 
 	// Valida modo de entrega
 	modoEntrega := domain.ModoEntregaRetirada
-	if input.ModoEntrega == string(domain.ModoEntregaEntrega) {
+	switch input.ModoEntrega {
+	case string(domain.ModoEntregaEntrega):
 		if !loja.AceitaEntrega {
 			return nil, errors.New("essa loja não aceita entrega em domicílio")
 		}
@@ -65,7 +66,14 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 			return nil, errors.New("endereço de entrega é obrigatório")
 		}
 		modoEntrega = domain.ModoEntregaEntrega
-	} else {
+
+	case string(domain.ModoEntregaGuardar):
+		if !loja.AceitaGuardarEntregar {
+			return nil, errors.New("essa loja não aceita guardar itens pra entregar depois")
+		}
+		modoEntrega = domain.ModoEntregaGuardar
+
+	default:
 		if !loja.AceitaRetirada {
 			return nil, errors.New("essa loja não aceita retirada — só entrega em domicílio")
 		}
@@ -75,8 +83,12 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 	if err := validarLojaAberta(loja); err != nil {
 		return nil, err
 	}
-	if err := validarDataRetirada(input.DataRetirada, loja); err != nil {
-		return nil, err
+	// Pedidos "guardar" não têm data de retirada — os itens ficam
+	// guardados por tempo indeterminado até o cliente pedir a entrega.
+	if modoEntrega != domain.ModoEntregaGuardar {
+		if err := validarDataRetirada(input.DataRetirada, loja); err != nil {
+			return nil, err
+		}
 	}
 
 	// Calcula a taxa de entrega ANTES da transação — se for "por_km" e a
@@ -144,6 +156,9 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 			if !produto.Disponivel {
 				return fmt.Errorf("produto %q está indisponível no momento", produto.Nome)
 			}
+			if modoEntrega == domain.ModoEntregaGuardar && produto.TipoProduto != domain.TipoProdutoMercadoria {
+				return fmt.Errorf("produto %q é alimentício e não pode ser guardado pra entrega posterior", produto.Nome)
+			}
 
 			precoUnit := produto.Preco
 			variacaoNome := ""
@@ -179,6 +194,11 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 			subtotal := precoUnit * float64(itemInput.Quantidade)
 			total += subtotal
 
+			pesoGramas := 0
+			if produto.PesoGramas != nil {
+				pesoGramas = *produto.PesoGramas
+			}
+
 			itens = append(itens, domain.ItemPedido{
 				ProdutoID:    produto.ID,
 				ProdutoNome:  produto.Nome,
@@ -186,6 +206,8 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 				PrecoUnit:    precoUnit,
 				VariacaoID:   itemInput.VariacaoID,
 				VariacaoNome: variacaoNome,
+				TipoProduto:  produto.TipoProduto,
+				PesoGramas:   pesoGramas,
 			})
 		}
 

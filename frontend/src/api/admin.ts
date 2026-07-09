@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Categoria, Produto, Pedido, Loja } from './types';
+import type { Categoria, Produto, Pedido, Loja, TipoProduto, SolicitacaoEntrega } from './types';
 
 // Categorias
 export async function listarCategorias(): Promise<Categoria[]> {
@@ -31,6 +31,8 @@ export interface ProdutoInput {
   categoria_id: number;
   estoque_atual: number | null;
   estoque_alerta: number | null;
+  tipo_produto: TipoProduto;
+  peso_gramas: number | null;
 }
 
 export async function listarProdutos(): Promise<Produto[]> {
@@ -58,6 +60,12 @@ export async function listarPedidos(): Promise<Pedido[]> {
   return data;
 }
 
+// Solicitações de entrega de itens guardados
+export async function listarSolicitacoes(): Promise<SolicitacaoEntrega[]> {
+  const { data } = await api.get<SolicitacaoEntrega[]>('/admin/solicitacoes');
+  return data;
+}
+
 // Loja
 export async function buscarLoja(): Promise<Loja> {
   const { data } = await api.get<Loja>('/admin/loja');
@@ -76,6 +84,7 @@ export interface ConfiguracoesInput {
   mensagem_pausa: string;
   aceita_retirada: boolean;
   aceita_entrega: boolean;
+  aceita_guardar_entregar: boolean;
   taxa_entrega_tipo: string;
   taxa_entrega_valor: number;
   valor_minimo_pedido: number;

@@ -27,3 +27,20 @@ export async function rastrearPedido(slug: string, pedidoId: number, telefone: s
   });
   return data;
 }
+
+// Mesmo padrão, só que pra entrega de itens guardados (SolicitacaoEntrega
+// em vez de Pedido) — ver Fase 3.
+export async function atualizarStatusEntregaSolicitacao(solicitacaoId: number, statusEntrega: 'saiu_para_entrega' | 'entregue'): Promise<void> {
+  await api.put(`/admin/solicitacoes/${solicitacaoId}/status-entrega`, { status_entrega: statusEntrega });
+}
+
+export async function atualizarLocalizacaoSolicitacao(solicitacaoId: number, latitude: number, longitude: number): Promise<void> {
+  await api.post(`/admin/solicitacoes/${solicitacaoId}/localizacao`, { latitude, longitude });
+}
+
+export async function rastrearSolicitacao(slug: string, solicitacaoId: number, telefone: string): Promise<RastrearResponse> {
+  const { data } = await api.get<RastrearResponse>(`/lojas/${slug}/solicitacoes/${solicitacaoId}/rastrear`, {
+    params: { telefone },
+  });
+  return data;
+}

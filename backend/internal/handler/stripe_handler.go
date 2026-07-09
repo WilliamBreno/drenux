@@ -74,6 +74,24 @@ func (h *StripeHandler) Checkout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"url": url})
 }
 
+// CheckoutFrete atende POST /solicitacoes/:id/checkout — rota pública. O
+// cliente paga só o frete de uma entrega de itens que já tem guardados.
+func (h *StripeHandler) CheckoutFrete(c *gin.Context) {
+	var params checkoutParams
+	if err := c.ShouldBindUri(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "id inválido"})
+		return
+	}
+
+	url, err := h.stripeService.CriarCheckoutFrete(c.Request.Context(), params.ID, h.frontendURL)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"url": url})
+}
+
 // Webhook atende POST /webhooks/stripe — chamado pela própria Stripe,
 // não por um navegador. Por isso lê o corpo bruto da requisição em vez
 // de usar o binding JSON do Gin: a verificação de assinatura precisa dos

@@ -19,6 +19,8 @@ const formVazio: ProdutoInput = {
   categoria_id: 0,
   estoque_atual: null,
   estoque_alerta: null,
+  tipo_produto: 'alimenticio',
+  peso_gramas: null,
 };
 
 const variacaoVazia: VariacaoInput = {
@@ -68,7 +70,7 @@ export function Produtos() {
 
   function abrirEdicao(produto: Produto) {
     setEditandoId(produto.id);
-    setForm({ nome: produto.nome, descricao: produto.descricao, preco: produto.preco, foto_url: produto.foto_url, disponivel: produto.disponivel, categoria_id: produto.categoria_id, estoque_atual: produto.estoque_atual, estoque_alerta: produto.estoque_alerta });
+    setForm({ nome: produto.nome, descricao: produto.descricao, preco: produto.preco, foto_url: produto.foto_url, disponivel: produto.disponivel, categoria_id: produto.categoria_id, estoque_atual: produto.estoque_atual, estoque_alerta: produto.estoque_alerta, tipo_produto: produto.tipo_produto, peso_gramas: produto.peso_gramas });
     setErro(null);
     setMostrarForm(true);
   }
@@ -93,13 +95,14 @@ export function Produtos() {
   function salvar(e: FormEvent) {
     e.preventDefault();
     if (!form.nome.trim() || form.preco <= 0 || !form.categoria_id) { setErro('Preenche nome, preço e categoria.'); return; }
+    if (form.tipo_produto === 'mercadoria' && (!form.peso_gramas || form.peso_gramas <= 0)) { setErro('Produtos do tipo Mercadoria precisam de um peso (em gramas).'); return; }
     setErro(null);
     if (editandoId) { mutAtualizar.mutate({ id: editandoId, input: form }); }
     else { mutCriar.mutate(form); }
   }
 
   function alternarDisponibilidade(produto: Produto) {
-    mutAtualizar.mutate({ id: produto.id, input: { nome: produto.nome, descricao: produto.descricao, preco: produto.preco, foto_url: produto.foto_url, categoria_id: produto.categoria_id, disponivel: !produto.disponivel, estoque_atual: produto.estoque_atual, estoque_alerta: produto.estoque_alerta } });
+    mutAtualizar.mutate({ id: produto.id, input: { nome: produto.nome, descricao: produto.descricao, preco: produto.preco, foto_url: produto.foto_url, categoria_id: produto.categoria_id, disponivel: !produto.disponivel, estoque_atual: produto.estoque_atual, estoque_alerta: produto.estoque_alerta, tipo_produto: produto.tipo_produto, peso_gramas: produto.peso_gramas } });
   }
 
   // Variações
@@ -188,6 +191,27 @@ export function Produtos() {
               </select>
             </Campo>
           </div>
+
+          <div className="flex gap-3">
+            <Campo label="Tipo de produto" className="flex-1">
+              <select
+                value={form.tipo_produto}
+                onChange={(e) => setForm({ ...form, tipo_produto: e.target.value as 'alimenticio' | 'mercadoria', peso_gramas: e.target.value === 'alimenticio' ? null : form.peso_gramas })}
+                className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+              >
+                <option value="alimenticio">Alimentício</option>
+                <option value="mercadoria">Mercadoria (roupas, artesanato...)</option>
+              </select>
+            </Campo>
+            {form.tipo_produto === 'mercadoria' && (
+              <Campo label="Peso (g)" className="flex-1">
+                <input type="number" min="1" required value={form.peso_gramas ?? ''} onChange={(e) => setForm({ ...form, peso_gramas: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Ex: 300" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
+              </Campo>
+            )}
+          </div>
+          {form.tipo_produto === 'mercadoria' && (
+            <p className="text-xs text-tinta-suave">Produtos "Mercadoria" podem ser guardados pelo cliente e entregues depois (se a loja tiver essa opção ativada em Configurações). Alimentícios nunca podem, por segurança.</p>
+          )}
 
           {/* Upload de foto */}
           <div>

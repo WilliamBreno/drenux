@@ -21,6 +21,18 @@ type ItemPedido struct {
 	// do produto — se a variação mudar depois, o histórico não muda).
 	VariacaoID   *uint  `gorm:"default:null" json:"variacao_id"`
 	VariacaoNome string `gorm:"size:50" json:"variacao_nome"`
+
+	// TipoProduto e PesoGramas são snapshot do produto no momento da
+	// compra (mesma lógica de ProdutoNome) — usados depois pra calcular
+	// o frete de itens guardados sem depender do produto ainda existir
+	// ou não ter mudado de peso/tipo nesse meio tempo.
+	TipoProduto TipoProduto `gorm:"size:20;default:'alimenticio'" json:"tipo_produto"`
+	PesoGramas  int         `gorm:"default:0" json:"peso_gramas"`
+
+	// SolicitacaoEntregaID marca se esse item (guardado) já foi
+	// reivindicado por um pedido de entrega — nil = ainda disponível
+	// pro cliente escolher depois.
+	SolicitacaoEntregaID *uint `gorm:"default:null;index" json:"solicitacao_entrega_id"`
 }
 
 func (ItemPedido) TableName() string {

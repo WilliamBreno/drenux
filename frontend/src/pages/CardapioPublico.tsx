@@ -7,6 +7,7 @@ import { AbasCategorias } from '../components/AbasCategorias';
 import { CarrinhoFlutuante } from '../components/CarrinhoFlutuante';
 import { CarrinhoDrawer } from '../components/CarrinhoDrawer';
 import { HistoricoDrawer } from '../components/HistoricoDrawer';
+import { GuardadosDrawer } from '../components/GuardadosDrawer';
 
 function lojaEstaAberta(loja: {
   horario_abertura: string;
@@ -44,6 +45,7 @@ export function CardapioPublico() {
   const [categoriaAtiva, setCategoriaAtiva] = useState<number | null>(null);
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
   const [historicoAberto, setHistoricoAberto] = useState(false);
+  const [guardadosAberto, setGuardadosAberto] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['cardapio', slug],
@@ -121,12 +123,22 @@ export function CardapioPublico() {
             {data.loja.horario_abertura} – {data.loja.horario_fechamento}
           </p>
         )}
-        <button
-          onClick={() => setHistoricoAberto(true)}
-          className="mt-3 rounded-full border border-superficie/30 px-4 py-1.5 text-xs font-medium text-superficie/80 hover:bg-superficie/10"
-        >
-          Meus pedidos
-        </button>
+        <div className="mt-3 flex justify-center gap-2">
+          <button
+            onClick={() => setHistoricoAberto(true)}
+            className="rounded-full border border-superficie/30 px-4 py-1.5 text-xs font-medium text-superficie/80 hover:bg-superficie/10"
+          >
+            Meus pedidos
+          </button>
+          {data.loja.aceita_guardar_entregar && (
+            <button
+              onClick={() => setGuardadosAberto(true)}
+              className="rounded-full border border-superficie/30 px-4 py-1.5 text-xs font-medium text-superficie/80 hover:bg-superficie/10"
+            >
+              📦 Itens guardados
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="sticky top-0 z-10 bg-fundo/95 py-3 backdrop-blur">
@@ -155,6 +167,7 @@ export function CardapioPublico() {
         antecedenciaMinimaHoras={data.loja.antecedencia_minima_horas}
         aceitaRetirada={data.loja.aceita_retirada}
         aceitaEntrega={data.loja.aceita_entrega}
+        aceitaGuardarEntregar={data.loja.aceita_guardar_entregar}
         taxaEntregaTipo={data.loja.taxa_entrega_tipo}
         taxaEntregaValor={data.loja.taxa_entrega_valor}
         valorMinimoPedido={data.loja.valor_minimo_pedido}
@@ -167,6 +180,14 @@ export function CardapioPublico() {
         produtos={data.produtos}
         onAbrirCarrinho={() => setCarrinhoAberto(true)}
       />
+
+      {data.loja.aceita_guardar_entregar && (
+        <GuardadosDrawer
+          aberto={guardadosAberto}
+          onFechar={() => setGuardadosAberto(false)}
+          slug={slug!}
+        />
+      )}
     </div>
   );
 }

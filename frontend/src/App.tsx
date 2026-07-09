@@ -16,6 +16,7 @@ import { Pedidos } from './pages/admin/Pedidos';
 import { CompartilharLocalizacao } from './pages/admin/CompartilharLocalizacao';
 import { Cupons } from './pages/admin/Cupons';
 import { Configuracoes } from './pages/admin/Configuracoes';
+import { Solicitacoes } from './pages/admin/Solicitacoes';
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,8 @@ function App() {
               <Route path="categorias" element={<Categorias />} />
               <Route path="pedidos" element={<Pedidos />} />
               <Route path="pedidos/:id/localizacao" element={<CompartilharLocalizacao />} />
+              <Route path="solicitacoes" element={<Solicitacoes />} />
+              <Route path="solicitacoes/:id/localizacao" element={<CompartilharLocalizacao />} />
               <Route path="cupons" element={<Cupons />} />
               <Route path="configuracoes" element={<Configuracoes />} />
             </Route>
@@ -47,6 +50,7 @@ function App() {
               casar "/loja-x/pedido/5/rastrear" com a rota do cardápio,
               tratando "pedido" como se fosse um slug de loja. */}
           <Route path="/:slug/pedido/:id/rastrear" element={<RastrearPedido />} />
+          <Route path="/:slug/solicitacao/:id/rastrear" element={<RastrearPedido />} />
 
           <Route path="/:slug" element={<CardapioPublico />} />
         </Routes>

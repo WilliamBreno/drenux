@@ -53,11 +53,21 @@ type Loja struct {
 
 	// Modos de recebimento — o dono define quais aceita.
 	// Pelo menos um dos dois deve estar ativo.
-	AceitaRetirada bool `gorm:"default:true" json:"aceita_retirada"`
-	AceitaEntrega  bool `gorm:"default:false" json:"aceita_entrega"`
-	Endereco  string  `gorm:"size:300" json:"endereco"`
-	Latitude  float64 `gorm:"default:0" json:"latitude"`
-	Longitude float64 `gorm:"default:0" json:"longitude"`
+	AceitaRetirada bool    `gorm:"default:true" json:"aceita_retirada"`
+	AceitaEntrega  bool    `gorm:"default:false" json:"aceita_entrega"`
+	Endereco       string  `gorm:"size:300" json:"endereco"`
+	Latitude       float64 `gorm:"default:0" json:"latitude"`
+	Longitude      float64 `gorm:"default:0" json:"longitude"`
+
+	// Cidade/Estado são capturados junto com Latitude/Longitude na
+	// geocodificação do endereço da loja — usados pra decidir se um
+	// destino de entrega de itens guardados está na mesma região
+	// (cálculo por km) ou fora dela (estimativa por peso+distância).
+	// Vêm como texto livre do Nominatim (ex: "Sergipe", não "SE") — o
+	// que importa é bater com o mesmo formato retornado na geocodificação
+	// do endereço de destino, não seguir um padrão de sigla.
+	Cidade string `gorm:"size:100" json:"cidade"`
+	Estado string `gorm:"size:100" json:"estado"`
 	// Taxa de entrega:
 	// "fixa"      → valor fixo definido pelo dono, somado ao total no checkout
 	// "combinado" → cliente informa o endereço, dono combina o valor fora do sistema
@@ -70,9 +80,13 @@ type Loja struct {
 	// Será removido numa migration futura.
 	PermiteMesmoDia bool `gorm:"default:false" json:"permite_mesmo_dia"`
 
+	// AceitaGuardarEntregar: opt-in explícito pro fluxo de "guardar e
+	// entregar depois" — a maioria das lojas de comida não vai querer
+	// isso, então fica desligado por padrão.
+	AceitaGuardarEntregar bool `gorm:"default:false" json:"aceita_guardar_entregar"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-
 }
 
 func (Loja) TableName() string {

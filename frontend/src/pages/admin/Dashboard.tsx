@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { buscarLoja } from '../../api/admin';
 import { useAuthStore } from '../../store/authStore';
 
-const links = [
+const linksBase = [
   { to: '/admin', label: 'Início' },
   { to: '/admin/pedidos', label: 'Pedidos' },
   { to: '/admin/produtos', label: 'Produtos' },
@@ -17,6 +17,12 @@ export function Dashboard() {
   const logout = useAuthStore((state) => state.logout);
 
   const { data: loja } = useQuery({ queryKey: ['loja'], queryFn: buscarLoja });
+
+  // Só aparece pra loja que ativou o recurso — pra maioria (lojas de
+  // comida) esse link não faz sentido.
+  const links = loja?.aceita_guardar_entregar
+    ? [...linksBase.slice(0, 2), { to: '/admin/solicitacoes', label: 'Guardados' }, ...linksBase.slice(2)]
+    : linksBase;
 
   function sair() {
     logout();

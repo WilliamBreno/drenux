@@ -4,6 +4,7 @@ import { criarPedido, criarCheckout } from '../api/pedidos';
 import { validarCupom } from '../api/cupons';
 import { cotarFrete } from '../api/frete';
 import { Campo } from './Campo';
+import { EnderecoCampos, enderecoVazio, enderecoParaTexto, enderecoPreenchido, type EnderecoValor } from './EnderecoCampos';
 
 interface Props {
   aberto: boolean;
@@ -13,6 +14,7 @@ interface Props {
   antecedenciaMinimaHoras: number;
   aceitaRetirada: boolean;
   aceitaEntrega: boolean;
+  aceitaGuardarEntregar: boolean;
   taxaEntregaTipo: string;
   taxaEntregaValor: number;
   valorMinimoPedido: number;
@@ -57,21 +59,32 @@ function normalizarTelefone(valor: string): string {
   return digitos.startsWith('55') ? digitos : `55${digitos}`;
 }
 
-export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenciaMinimaHoras, aceitaRetirada, aceitaEntrega, taxaEntregaTipo, taxaEntregaValor, valorMinimoPedido }: Props) {
+export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenciaMinimaHoras, aceitaRetirada, aceitaEntrega, aceitaGuardarEntregar, taxaEntregaTipo, taxaEntregaValor, valorMinimoPedido }: Props) {
   const itens = useCartStore((state) => state.itens);
   const total = useCartStore((state) => state.total());
   const alterarQuantidade = useCartStore((state) => state.alterarQuantidade);
   const remover = useCartStore((state) => state.remover);
+
+  // "Guardar pra depois" só aparece se a loja ativou o recurso E todo
+  // mundo no carrinho é "mercadoria" — carrinho misto com item
+  // alimentício precisa ser finalizado em duas compras separadas.
+  const todosMercadoria = itens.length > 0 && itens.every((item) => item.produto.tipo_produto === 'mercadoria');
+  const opcoesModoEntrega: { valor: 'retirada' | 'entrega' | 'guardar'; label: string }[] = [
+    ...(aceitaRetirada ? [{ valor: 'retirada' as const, label: '🏪 Retirada' }] : []),
+    ...(aceitaEntrega ? [{ valor: 'entrega' as const, label: '🛵 Entrega' }] : []),
+    ...(aceitaGuardarEntregar && todosMercadoria ? [{ valor: 'guardar' as const, label: '📦 Guardar' }] : []),
+  ];
 
   const [etapa, setEtapa] = useState<'carrinho' | 'dados'>('carrinho');
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [data, setData] = useState('');
   const [hora, setHora] = useState('');
-  const [modoEntrega, setModoEntrega] = useState<'retirada' | 'entrega'>(
+  const [modoEntrega, setModoEntrega] = useState<'retirada' | 'entrega' | 'guardar'>(
     aceitaRetirada ? 'retirada' : 'entrega'
   );
-  const [endereco, setEndereco] = useState('');
+  const [enderecoValor, setEnderecoValor] = useState<EnderecoValor>(enderecoVazio);
+  const enderecoTexto = enderecoParaTexto(enderecoValor);
   const [cupomCodigo, setCupomCodigo] = useState('');
   const [desconto, setDesconto] = useState(0);
   const [cupomMsg, setCupomMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
@@ -89,12 +102,22 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Se o carrinho deixou de ser 100% mercadoria (ex: cliente adicionou
+    // um item alimentício depois de já ter escolhido "guardar"), volta
+    // pro modo padrão em vez de deixar uma opção que sumiu selecionada.
+    if (modoEntrega === 'guardar' && !opcoesModoEntrega.some((o) => o.valor === 'guardar')) {
+      setModoEntrega(aceitaRetirada ? 'retirada' : 'entrega');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todosMercadoria]);
+
+  useEffect(() => {
     if (taxaEntregaTipo !== 'por_km' || modoEntrega !== 'entrega') {
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!endereco.trim() || endereco.trim().length < 8) {
+    if (!enderecoPreenchido(enderecoValor)) {
       setFreteCalculado(null);
       setDistanciaKm(null);
       setErroFrete(null);
@@ -105,7 +128,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
       setCalculandoFrete(true);
       setErroFrete(null);
       try {
-        const resultado = await cotarFrete(slug, endereco.trim());
+        const resultado = await cotarFrete(slug, enderecoTexto);
         setFreteCalculado(resultado.valor_frete);
         setDistanciaKm(resultado.distancia_km);
       } catch {
@@ -121,7 +144,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endereco, taxaEntregaTipo, modoEntrega, slug]);
+  }, [enderecoTexto, taxaEntregaTipo, modoEntrega, slug]);
 
   if (!aberto) return null;
 
@@ -173,15 +196,15 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
       setErro('Preenche nome e WhatsApp.');
       return;
     }
-    if (modoEntrega === 'entrega' && !endereco.trim()) {
-      setErro('Preenche o endereço de entrega.');
+    if (modoEntrega === 'entrega' && !enderecoPreenchido(enderecoValor)) {
+      setErro('Preenche o endereço de entrega (rua e cidade, pelo menos).');
       return;
     }
     if (modoEntrega === 'entrega' && taxaEntregaTipo === 'por_km' && freteCalculado === null) {
       setErro('Aguarda o cálculo do frete antes de continuar (ou confere se o endereço está completo).');
       return;
     }
-    if (modoPedido === 'agendado') {
+    if (modoPedido === 'agendado' && modoEntrega !== 'guardar') {
       if (!data) { setErro('Escolhe a data de retirada.'); return; }
       if (!hora) { setErro('Escolhe a hora.'); return; }
       const escolhida = new Date(`${data}T${hora}:00`);
@@ -198,7 +221,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
     setErro(null);
 
     try {
-      const dataRetirada = modoPedido === 'agendado'
+      const dataRetirada = modoPedido === 'agendado' && modoEntrega !== 'guardar'
         ? new Date(`${data}T${hora}:00`).toISOString()
         : new Date().toISOString();
 
@@ -207,7 +230,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
         cliente_telefone: normalizarTelefone(telefone),
         data_retirada: dataRetirada,
         modo_entrega: modoEntrega,
-        endereco_entrega: modoEntrega === 'entrega' ? endereco.trim() : undefined,
+        endereco_entrega: modoEntrega === 'entrega' ? enderecoTexto : undefined,
         cupom_codigo: desconto > 0 ? cupomCodigo : undefined,
         itens: itens.map((item) => ({
           produto_id: item.produto.id,
@@ -301,23 +324,25 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
             </ul>
           ) : (
             <div className="space-y-4">
-              {aceitaRetirada && aceitaEntrega && (
+              {opcoesModoEntrega.length > 1 && (
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModoEntrega('retirada')}
-                    className={`flex-1 rounded-full border-2 py-2 text-sm font-semibold transition ${modoEntrega === 'retirada' ? 'border-acento bg-acento text-superficie' : 'border-tinta/20 text-tinta'}`}
-                  >
-                    🏪 Retirada
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModoEntrega('entrega')}
-                    className={`flex-1 rounded-full border-2 py-2 text-sm font-semibold transition ${modoEntrega === 'entrega' ? 'border-acento bg-acento text-superficie' : 'border-tinta/20 text-tinta'}`}
-                  >
-                    🛵 Entrega
-                  </button>
+                  {opcoesModoEntrega.map((opcao) => (
+                    <button
+                      key={opcao.valor}
+                      type="button"
+                      onClick={() => setModoEntrega(opcao.valor)}
+                      className={`flex-1 rounded-full border-2 py-2 text-sm font-semibold transition ${modoEntrega === opcao.valor ? 'border-acento bg-acento text-superficie' : 'border-tinta/20 text-tinta'}`}
+                    >
+                      {opcao.label}
+                    </button>
+                  ))}
                 </div>
+              )}
+
+              {modoEntrega === 'guardar' && (
+                <p className="rounded-xl bg-fundo px-3 py-2 text-xs text-tinta-suave">
+                  Você paga só os produtos agora. Eles ficam guardados aqui até você voltar, escolher o que quer receber e pagar o frete separadamente.
+                </p>
               )}
 
               <Campo label="Seu nome">
@@ -329,15 +354,11 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
               </Campo>
 
               {modoEntrega === 'entrega' && (
-                <Campo label="Endereço de entrega">
-                  <input
-                    value={endereco}
-                    onChange={(e) => setEndereco(e.target.value)}
-                    placeholder="Rua, número, bairro, cidade"
-                    className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
-                  />
+                <div>
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-tinta-suave">Endereço de entrega</span>
+                  <EnderecoCampos valor={enderecoValor} onChange={setEnderecoValor} />
                   {taxaEntregaTipo === 'combinado' && (
-                    <p className="mt-1 text-xs text-tinta-suave">Taxa de entrega a combinar com a loja.</p>
+                    <p className="mt-1.5 text-xs text-tinta-suave">Taxa de entrega a combinar com a loja.</p>
                   )}
                   {taxaEntregaTipo === 'por_km' && (
                     <div className="mt-1.5">
@@ -354,10 +375,10 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
                       )}
                     </div>
                   )}
-                </Campo>
+                </div>
               )}
 
-              {modoPedido === 'agendado' && (
+              {modoPedido === 'agendado' && modoEntrega !== 'guardar' && (
                 <div className="flex gap-3">
                   <Campo label="Data de retirada" className="flex-1">
                     <input
@@ -380,7 +401,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
                 </div>
               )}
 
-              {modoPedido === 'agendado' && antecedenciaMinimaHoras > 0 && (
+              {modoPedido === 'agendado' && modoEntrega !== 'guardar' && antecedenciaMinimaHoras > 0 && (
                 <p className="text-xs text-tinta-suave">
                   Essa loja exige pelo menos {antecedenciaMinimaHoras}h de antecedência.
                 </p>

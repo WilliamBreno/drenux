@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 	"github.com/WilliamBreno/cardapio-backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -27,14 +28,16 @@ func (h *ProdutoHandler) Listar(c *gin.Context) {
 }
 
 type produtoRequest struct {
-	Nome          string  `json:"nome" binding:"required"`
-	Descricao     string  `json:"descricao"`
-	Preco         float64 `json:"preco" binding:"required,gt=0"`
-	FotoURL       string  `json:"foto_url"`
-	Disponivel    bool    `json:"disponivel"`
-	CategoriaID   uint    `json:"categoria_id" binding:"required"`
-	EstoqueAtual  *int    `json:"estoque_atual"`
-	EstoqueAlerta *int    `json:"estoque_alerta"`
+	Nome          string             `json:"nome" binding:"required"`
+	Descricao     string             `json:"descricao"`
+	Preco         float64            `json:"preco" binding:"required,gt=0"`
+	FotoURL       string             `json:"foto_url"`
+	Disponivel    bool               `json:"disponivel"`
+	CategoriaID   uint               `json:"categoria_id" binding:"required"`
+	EstoqueAtual  *int               `json:"estoque_atual"`
+	EstoqueAlerta *int               `json:"estoque_alerta"`
+	TipoProduto   domain.TipoProduto `json:"tipo_produto"`
+	PesoGramas    *int               `json:"peso_gramas"`
 }
 
 func (h *ProdutoHandler) Criar(c *gin.Context) {
@@ -55,6 +58,8 @@ func (h *ProdutoHandler) Criar(c *gin.Context) {
 		CategoriaID:   req.CategoriaID,
 		EstoqueAtual:  req.EstoqueAtual,
 		EstoqueAlerta: req.EstoqueAlerta,
+		TipoProduto:   req.TipoProduto,
+		PesoGramas:    req.PesoGramas,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
@@ -87,6 +92,8 @@ func (h *ProdutoHandler) Atualizar(c *gin.Context) {
 		CategoriaID:   req.CategoriaID,
 		EstoqueAtual:  req.EstoqueAtual,
 		EstoqueAlerta: req.EstoqueAlerta,
+		TipoProduto:   req.TipoProduto,
+		PesoGramas:    req.PesoGramas,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
