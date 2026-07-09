@@ -35,7 +35,14 @@ type SolicitacaoEntrega struct {
 	Status          StatusSolicitacao `gorm:"size:30;not null;default:aguardando_pagamento" json:"status"`
 	StripeSessionID string            `gorm:"size:255" json:"-"`
 
-	Itens []ItemPedido `gorm:"foreignKey:SolicitacaoEntregaID" json:"itens"`
+	// constraint:false — de propósito, mesmo motivo do ItemPedido não ter
+	// FK real pro Produto: evita o GORM tentar criar a foreign key numa
+	// ordem que trava a migração (a tabela referenciada às vezes ainda
+	// não existe no momento em que o GORM tenta o ALTER TABLE). O
+	// relacionamento continua funcionando normalmente via consultas
+	// (Preload, WHERE solicitacao_entrega_id = ?), só não vira uma regra
+	// no banco.
+	Itens []ItemPedido `gorm:"foreignKey:SolicitacaoEntregaID;constraint:false" json:"itens"`
 
 	// Mesmo padrão de rastreamento em tempo real já usado em Pedido —
 	// reaproveitado aqui, não reinventado.
