@@ -42,7 +42,7 @@ type SolicitacaoEntrega struct {
 	// relacionamento continua funcionando normalmente via consultas
 	// (Preload, WHERE solicitacao_entrega_id = ?), só não vira uma regra
 	// no banco.
-	Itens []ItemPedido `gorm:"foreignKey:SolicitacaoEntregaID;constraint:false" json:"itens"`
+	Itens []ItemPedido `gorm:"foreignKey:SolicitacaoEntregaID;constraint:-" json:"itens"`
 
 	// Mesmo padrão de rastreamento em tempo real já usado em Pedido —
 	// reaproveitado aqui, não reinventado.
