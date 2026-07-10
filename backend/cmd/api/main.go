@@ -117,7 +117,7 @@ func main() {
 	solicitacaoHandler := handler.NewSolicitacaoHandler(repository.NewSolicitacaoEntregaRepository(db))
 
 	// Sistema de afiliados (comissão automática via Stripe Transfer)
-	afiliadoService := service.NewAfiliadoService(db, cfg.JWTSecret, cfg.StripeSecretKey)
+	afiliadoService := service.NewAfiliadoService(db, cfg.JWTSecret, cfg.StripeSecretKey, emailSender, cfg.FrontendURLs[0])
 	afiliadoHandler := handler.NewAfiliadoHandler(afiliadoService, cfg.FrontendURLs[0])
 
 	router.POST("/auth/cadastro", authHandler.Cadastrar)
