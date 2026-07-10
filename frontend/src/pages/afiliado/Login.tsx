@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { loginAfiliado } from '../../api/afiliado';
 import { useAfiliadoAuthStore } from '../../store/afiliadoAuthStore';
 import { Campo } from '../../components/Campo';
@@ -58,6 +58,12 @@ export function LoginAfiliado() {
             className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
           />
         </Campo>
+
+        <div className="text-right">
+          <Link to="/afiliado/esqueci-senha" className="text-sm text-tinta-suave hover:text-acento">
+            Esqueceu a senha?
+          </Link>
+        </div>
 
         {erro && <p className="text-sm text-acento">{erro}</p>}
 

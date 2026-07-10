@@ -23,7 +23,7 @@ type afiliadoLoginRequest struct {
 }
 
 // Login atende POST /afiliados/login — rota pública, separada do login
-// de dono de loja (o afiliado não tem uma "loja", tem um painel próprio).
+// de dono de loja.
 func (h *AfiliadoHandler) Login(c *gin.Context) {
 	var req afiliadoLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -60,4 +60,38 @@ func (h *AfiliadoHandler) IniciarOnboarding(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"url": link})
+}
+
+type afiliadoEsqueciSenhaRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// EsqueciSenha atende POST /afiliados/esqueci-senha — rota pública.
+func (h *AfiliadoHandler) EsqueciSenha(c *gin.Context) {
+	var req afiliadoEsqueciSenhaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+	_ = h.afiliadoService.EsqueciSenha(req.Email)
+	c.JSON(http.StatusOK, gin.H{"mensagem": "se o email existir, você receberá um link de redefinição"})
+}
+
+type afiliadoRedefinirSenhaRequest struct {
+	Token string `json:"token" binding:"required"`
+	Senha string `json:"senha" binding:"required,min=6"`
+}
+
+// RedefinirSenha atende POST /afiliados/redefinir-senha — rota pública.
+func (h *AfiliadoHandler) RedefinirSenha(c *gin.Context) {
+	var req afiliadoRedefinirSenhaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+	if err := h.afiliadoService.RedefinirSenha(req.Token, req.Senha); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"mensagem": "senha redefinida com sucesso"})
 }

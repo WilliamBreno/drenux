@@ -1,9 +1,6 @@
 import axios from 'axios';
 import { useAfiliadoAuthStore } from '../store/afiliadoAuthStore';
 
-// Instância própria (não reaproveita o client.ts das lojas) — assim o
-// token de afiliado nunca conflita com o token de dono de loja, mesmo
-// que os dois estejam logados ao mesmo tempo no mesmo navegador.
 const apiAfiliado = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
@@ -25,8 +22,22 @@ interface AuthResponse {
   token: string;
 }
 
+interface MensagemResponse {
+  mensagem: string;
+}
+
 export async function loginAfiliado(input: LoginInput): Promise<AuthResponse> {
   const { data } = await apiAfiliado.post<AuthResponse>('/afiliados/login', input);
+  return data;
+}
+
+export async function solicitarResetSenhaAfiliado(email: string): Promise<MensagemResponse> {
+  const { data } = await apiAfiliado.post<MensagemResponse>('/afiliados/esqueci-senha', { email });
+  return data;
+}
+
+export async function redefinirSenhaAfiliado(token: string, senha: string): Promise<MensagemResponse> {
+  const { data } = await apiAfiliado.post<MensagemResponse>('/afiliados/redefinir-senha', { token, senha });
   return data;
 }
 

@@ -18,6 +18,8 @@ import { Cupons } from './pages/admin/Cupons';
 import { Configuracoes } from './pages/admin/Configuracoes';
 import { LoginAfiliado } from './pages/afiliado/Login';
 import { DashboardAfiliado } from './pages/afiliado/Dashboard';
+import { EsqueciSenhaAfiliado } from './pages/afiliado/EsqueciSenha';
+import { RedefinirSenhaAfiliado } from './pages/afiliado/RedefinirSenha';
 import { AfiliadoRotaProtegida } from './components/AfiliadoRotaProtegida';
 
 const queryClient = new QueryClient();
@@ -48,6 +50,8 @@ function App() {
 
           {/* Painel do afiliado — autenticação própria, separada de loja */}
           <Route path="/afiliado/login" element={<LoginAfiliado />} />
+          <Route path="/afiliado/esqueci-senha" element={<EsqueciSenhaAfiliado />} />
+          <Route path="/afiliado/redefinir-senha" element={<RedefinirSenhaAfiliado />} />
           <Route element={<AfiliadoRotaProtegida />}>
             <Route path="/afiliado/dashboard" element={<DashboardAfiliado />} />
           </Route>

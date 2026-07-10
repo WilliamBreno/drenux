@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 	"gorm.io/gorm"
 )
@@ -67,4 +69,37 @@ func (r *AfiliadoRepository) SomarComissoes(afiliadoID uint) (float64, error) {
 		Select("COALESCE(SUM(pedidos.comissao_afiliado), 0)").
 		Scan(&total).Error
 	return total, err
+}
+
+// SalvarResetToken grava o token de redefinição de senha e sua data de
+// expiração no afiliado. Mesmo padrão usado em UsuarioRepository.
+func (r *AfiliadoRepository) SalvarResetToken(afiliadoID uint, token string, expira time.Time) error {
+	return r.db.Model(&domain.Afiliado{}).
+		Where("id = ?", afiliadoID).
+		Updates(map[string]interface{}{
+			"reset_token":        token,
+			"reset_token_expira": expira,
+		}).Error
+}
+
+// BuscarPorResetToken encontra o afiliado dono de um token de reset
+// específico.
+func (r *AfiliadoRepository) BuscarPorResetToken(token string) (*domain.Afiliado, error) {
+	var afiliado domain.Afiliado
+	if err := r.db.Where("reset_token = ?", token).First(&afiliado).Error; err != nil {
+		return nil, err
+	}
+	return &afiliado, nil
+}
+
+// AtualizarSenha troca o hash da senha e limpa o token de reset (uso
+// único).
+func (r *AfiliadoRepository) AtualizarSenha(afiliadoID uint, novaSenhaHash string) error {
+	return r.db.Model(&domain.Afiliado{}).
+		Where("id = ?", afiliadoID).
+		Updates(map[string]interface{}{
+			"senha_hash":         novaSenhaHash,
+			"reset_token":        nil,
+			"reset_token_expira": nil,
+		}).Error
 }

@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
+	"github.com/WilliamBreno/cardapio-backend/internal/notification"
 	"github.com/WilliamBreno/cardapio-backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stripe/stripe-go/v86"
@@ -19,14 +22,18 @@ type AfiliadoService struct {
 	jwtSecret    string
 	afiliadoRepo *repository.AfiliadoRepository
 	stripeClient *stripe.Client
+	emailSender  *notification.EmailSender
+	frontendURL  string
 }
 
-func NewAfiliadoService(db *gorm.DB, jwtSecret, stripeSecretKey string) *AfiliadoService {
+func NewAfiliadoService(db *gorm.DB, jwtSecret, stripeSecretKey string, emailSender *notification.EmailSender, frontendURL string) *AfiliadoService {
 	return &AfiliadoService{
 		db:           db,
 		jwtSecret:    jwtSecret,
 		afiliadoRepo: repository.NewAfiliadoRepository(db),
 		stripeClient: stripe.NewClient(stripeSecretKey),
+		emailSender:  emailSender,
+		frontendURL:  frontendURL,
 	}
 }
 
@@ -82,8 +89,7 @@ func (s *AfiliadoService) Dashboard(afiliadoID uint) (*DashboardAfiliado, error)
 }
 
 // IniciarOnboarding cria (se ainda não existir) a conta Stripe Connect
-// Express do afiliado e devolve o link de onboarding — mesmo padrão já
-// usado pelas lojas em StripeService.IniciarOnboarding.
+// Express do afiliado e devolve o link de onboarding.
 func (s *AfiliadoService) IniciarOnboarding(ctx context.Context, afiliadoID uint, returnURL, refreshURL string) (string, error) {
 	afiliado, err := s.afiliadoRepo.BuscarPorID(afiliadoID)
 	if err != nil {
@@ -117,4 +123,59 @@ func (s *AfiliadoService) IniciarOnboarding(ctx context.Context, afiliadoID uint
 		return "", fmt.Errorf("gerando link de onboarding do afiliado: %w", err)
 	}
 	return link.URL, nil
+}
+
+// EsqueciSenha gera um token de redefinição e envia por email. Nunca
+// retorna erro por "email não encontrado" — sempre parece ter dado
+// certo, evitando que alguém descubra quais emails de afiliado existem.
+func (s *AfiliadoService) EsqueciSenha(email string) error {
+	afiliado, err := s.afiliadoRepo.BuscarPorEmail(email)
+	if err != nil {
+		return nil
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return fmt.Errorf("gerando token de reset: %w", err)
+	}
+	token := hex.EncodeToString(tokenBytes)
+	expira := time.Now().Add(1 * time.Hour)
+
+	if err := s.afiliadoRepo.SalvarResetToken(afiliado.ID, token, expira); err != nil {
+		return fmt.Errorf("salvando token de reset: %w", err)
+	}
+
+	if s.emailSender == nil {
+		return nil
+	}
+
+	link := fmt.Sprintf("%s/afiliado/redefinir-senha?token=%s", s.frontendURL, token)
+	if err := s.emailSender.EnviarResetSenha(afiliado.Email, afiliado.Nome, link); err != nil {
+		return fmt.Errorf("enviando email de reset: %w", err)
+	}
+
+	return nil
+}
+
+// RedefinirSenha valida o token (existe e não expirou) e troca a senha.
+func (s *AfiliadoService) RedefinirSenha(token, novaSenha string) error {
+	afiliado, err := s.afiliadoRepo.BuscarPorResetToken(token)
+	if err != nil {
+		return errors.New("link inválido ou expirado")
+	}
+
+	if afiliado.ResetTokenExpira == nil || time.Now().After(*afiliado.ResetTokenExpira) {
+		return errors.New("link inválido ou expirado")
+	}
+
+	senhaHash, err := bcrypt.GenerateFromPassword([]byte(novaSenha), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("gerando hash da nova senha: %w", err)
+	}
+
+	if err := s.afiliadoRepo.AtualizarSenha(afiliado.ID, string(senhaHash)); err != nil {
+		return fmt.Errorf("atualizando senha: %w", err)
+	}
+
+	return nil
 }
