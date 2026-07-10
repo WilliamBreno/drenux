@@ -63,6 +63,7 @@ func (s *AfiliadoService) gerarToken(afiliadoID uint) (string, error) {
 // DashboardAfiliado agrega o que o painel do afiliado precisa mostrar:
 // lojas indicadas, total já ganho, e se a conta Stripe já foi conectada.
 type DashboardAfiliado struct {
+	Codigo          string        `json:"codigo"`
 	Lojas           []domain.Loja `json:"lojas"`
 	TotalGanho      float64       `json:"total_ganho"`
 	StripeConectado bool          `json:"stripe_conectado"`
@@ -82,6 +83,7 @@ func (s *AfiliadoService) Dashboard(afiliadoID uint) (*DashboardAfiliado, error)
 		return nil, err
 	}
 	return &DashboardAfiliado{
+		Codigo:          afiliado.Codigo,
 		Lojas:           lojas,
 		TotalGanho:      total,
 		StripeConectado: afiliado.StripeAccountID != "",

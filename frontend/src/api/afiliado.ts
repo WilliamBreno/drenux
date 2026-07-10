@@ -49,6 +49,7 @@ export interface LojaIndicada {
 }
 
 export interface DashboardAfiliado {
+  codigo: string;
   lojas: LojaIndicada[];
   total_ganho: number;
   stripe_conectado: boolean;

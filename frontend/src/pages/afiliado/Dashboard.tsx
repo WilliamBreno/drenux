@@ -14,12 +14,21 @@ function formatarData(iso: string) {
 export function DashboardAfiliado() {
   const logout = useAfiliadoAuthStore((s) => s.logout);
   const [conectando, setConectando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['afiliado-dashboard'],
     queryFn: buscarDashboardAfiliado,
     refetchInterval: 60_000,
   });
+
+  const linkIndicacao = data ? `${window.location.origin}/cadastro?ref=${data.codigo}` : '';
+
+  async function copiarLink() {
+    await navigator.clipboard.writeText(linkIndicacao);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
 
   async function conectarStripe() {
     setConectando(true);
@@ -48,6 +57,26 @@ export function DashboardAfiliado() {
             Sair
           </button>
         </div>
+
+        {/* Link de indicação */}
+        <section className="rounded-2xl bg-superficie p-5 shadow-sm">
+          <h2 className="font-display text-lg tracking-wide text-tinta">Seu link de indicação</h2>
+          <p className="mt-1 text-sm text-tinta-suave">
+            Compartilhe esse link — toda loja que se cadastrar por ele fica vinculada a você
+            permanentemente, e você recebe 3,01% de comissão em cada pedido pago.
+          </p>
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-fundo px-4 py-3">
+            <span className="min-w-0 flex-1 truncate font-carimbo text-sm text-tinta">
+              {linkIndicacao}
+            </span>
+            <button
+              onClick={copiarLink}
+              className="shrink-0 rounded-full bg-acento px-3 py-1.5 text-xs font-semibold text-superficie"
+            >
+              {copiado ? 'Copiado!' : 'Copiar'}
+            </button>
+          </div>
+        </section>
 
         {/* Card de pagamento */}
         <section className="rounded-2xl bg-superficie p-5 shadow-sm">
