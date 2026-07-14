@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EsqueciSenha } from './pages/EsqueciSenha';
 import { RedefinirSenha } from './pages/RedefinirSenha';
 import { Home } from './pages/Home';
+import { Planos } from './pages/Planos';
 import { CardapioPublico } from './pages/CardapioPublico';
 import { RastrearPedido } from './pages/RastrearPedido';
 import { Login } from './pages/Login';
@@ -29,7 +30,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
+          {/* "/" agora é a porta de entrada comercial: mostra os planos.
+              O que antes era a home (entrar / cadastrar) virou "/inicio",
+              separado de propósito pra manter cada URL com um papel claro. */}
+          <Route path="/" element={<Planos />} />
+          <Route path="/inicio" element={<Home />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
