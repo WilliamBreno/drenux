@@ -86,6 +86,10 @@ type Loja struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	Plano                string `gorm:"size:20;default:'start'" json:"plano"`
+	StripeCustomerID     string `gorm:"size:100" json:"-"`
+	StripeSubscriptionID string `gorm:"size:100" json:"-"`
 }
 
 func (Loja) TableName() string {

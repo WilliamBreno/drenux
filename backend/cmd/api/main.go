@@ -39,6 +39,7 @@ func main() {
 		&domain.ItemPedido{},
 		&domain.SolicitacaoEntrega{},
 		&domain.Afiliado{},
+		&domain.AssinaturaPendente{},
 	); err != nil {
 		log.Fatalf("erro ao migrar o banco: %v", err)
 	}
@@ -95,8 +96,11 @@ func main() {
 		cfg.FrontendURLs[0],
 	)
 
-	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender)
+	// StripeService agora também recebe emailSender e frontendURL — usados
+	// pro fluxo de assinatura de plano (Pro/Scale).
+	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender, emailSender, cfg.FrontendURLs[0])
 	stripeHandler := handler.NewStripeHandler(stripeService, cfg.FrontendURLs[0])
+	planoHandler := handler.NewPlanoHandler(stripeService)
 
 	lojaHandler := handler.NewLojaHandler(lojaService, distanciaService)
 
@@ -116,7 +120,6 @@ func main() {
 	guardadosHandler := handler.NewGuardadosHandler(guardadosService)
 	solicitacaoHandler := handler.NewSolicitacaoHandler(repository.NewSolicitacaoEntregaRepository(db))
 
-	// Sistema de afiliados (comissão automática via Stripe Transfer)
 	afiliadoService := service.NewAfiliadoService(db, cfg.JWTSecret, cfg.StripeSecretKey, emailSender, cfg.FrontendURLs[0])
 	afiliadoHandler := handler.NewAfiliadoHandler(afiliadoService, cfg.FrontendURLs[0])
 
@@ -127,8 +130,11 @@ func main() {
 
 	router.POST("/afiliados/login", afiliadoHandler.Login)
 
-	// Rotas públicas — sem autenticação. É como o cliente final acessa o
-	// cardápio e faz um pedido numa loja específica, pelo slug.
+	// Assinatura de plano (Pro/Scale) — rotas públicas
+	router.POST("/planos/checkout", planoHandler.CriarCheckout)
+	router.GET("/planos/verificar-token", planoHandler.VerificarToken)
+	router.GET("/planos/verificar-sessao", planoHandler.VerificarSessao)
+
 	router.GET("/lojas/:slug", catalogoHandler.BuscarCardapio)
 	router.GET("/lojas/:slug/historico", catalogoHandler.BuscarHistorico)
 	router.POST("/lojas/:slug/pedidos", pedidoHandler.Criar)
@@ -145,21 +151,16 @@ func main() {
 	router.POST("/lojas/:slug/cotar-frete", freteHandler.Cotar)
 	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
 
-	// Fluxo "guardar e entregar depois" (Fase 3)
 	router.GET("/lojas/:slug/guardados", guardadosHandler.Listar)
 	router.POST("/lojas/:slug/guardados/cotar-frete", guardadosHandler.CotarFrete)
 	router.POST("/lojas/:slug/guardados/solicitar-entrega", guardadosHandler.SolicitarEntrega)
 	router.GET("/lojas/:slug/solicitacoes/:id/rastrear", solicitacaoHandler.Rastrear)
 	router.POST("/solicitacoes/:id/checkout", stripeHandler.CheckoutFrete)
 
-	// Webhook da Stripe — chamado pela Stripe, não por usuário. Validado
-	// por assinatura, não por JWT.
 	router.POST("/webhooks/stripe", stripeHandler.Webhook)
 
-	// Relatório semanal — chamado pelo cron-job.org todo domingo.
 	router.POST("/relatorio/semanal", relatorioHandler.EnviarSemanal)
 
-	// Grupo de rotas administrativas — tudo aqui dentro exige token válido.
 	admin := router.Group("/admin")
 	admin.Use(middleware.AuthRequired(cfg.JWTSecret))
 	admin.GET("/me", func(c *gin.Context) {
@@ -209,15 +210,11 @@ func main() {
 	admin.GET("/loja", lojaHandler.Buscar)
 	admin.PUT("/loja", lojaHandler.AtualizarConfiguracoes)
 
-	// Grupo de rotas do afiliado — token próprio (claim "afiliado_id"),
-	// separado do token de dono de loja.
 	afiliado := router.Group("/afiliado")
 	afiliado.Use(middleware.AfiliadoRequired(cfg.JWTSecret))
 	afiliado.GET("/dashboard", afiliadoHandler.Dashboard)
 	afiliado.POST("/stripe/onboarding", afiliadoHandler.IniciarOnboarding)
 
-	// Health check: confirma que o servidor está de pé E que o banco está
-	// respondendo.
 	router.GET("/health", func(c *gin.Context) {
 		sqlDB, err := db.DB()
 		if err != nil || sqlDB.Ping() != nil {

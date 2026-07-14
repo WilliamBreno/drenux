@@ -28,18 +28,18 @@ func NewAuthService(db *gorm.DB, jwtSecret string, emailSender *notification.Ema
 }
 
 type CadastroInput struct {
-	Nome           string
-	Email          string
-	Senha          string
-	NomeLoja       string
-	CodigoAfiliado string // opcional — vem do ?ref=CODIGO capturado no frontend
+	Nome             string
+	Email            string
+	Senha            string
+	NomeLoja         string
+	CodigoAfiliado   string // opcional — vem do ?ref=CODIGO capturado no frontend
+	TokenAssinatura  string // opcional — vem de /cadastro/finalizar?token=XXX, só existe pra planos Pro/Scale
 }
 
-// Cadastrar cria o usuário, a loja dele e as categorias padrão (Salgados,
-// Doces) tudo dentro de uma única transação: se qualquer passo falhar,
-// nada fica salvo pela metade. Se vier um CodigoAfiliado válido, a loja
-// já nasce vinculada a esse afiliado — vínculo permanente, nunca muda
-// depois.
+// Cadastrar cria o usuário, a loja dele e as categorias padrão tudo numa
+// transação. Se vier um TokenAssinatura válido (pagamento de mensalidade
+// já confirmado), a loja já nasce vinculada ao plano Pro/Scale e à
+// assinatura Stripe correspondente; sem token, nasce no plano Start.
 func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 	senhaHash, err := bcrypt.GenerateFromPassword([]byte(input.Senha), bcrypt.DefaultCost)
 	if err != nil {
@@ -58,6 +58,7 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 		lojaRepo := repository.NewLojaRepository(tx)
 		categoriaRepo := repository.NewCategoriaRepository(tx)
 		afiliadoRepo := repository.NewAfiliadoRepository(tx)
+		assinaturaRepo := repository.NewAssinaturaPendenteRepository(tx)
 
 		if err := usuarioRepo.Criar(&usuario); err != nil {
 			return fmt.Errorf("não foi possível criar o usuário (email já cadastrado?): %w", err)
@@ -72,12 +73,30 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 			UsuarioID: usuario.ID,
 			Nome:      input.NomeLoja,
 			Slug:      slug,
+			Plano:     "start",
+		}
+
+		// Se veio um token de assinatura (pagamento de Pro/Scale já
+		// confirmado), valida de novo aqui dentro da transação — evita
+		// condição de corrida se o cliente abrir o link em duas abas ao
+		// mesmo tempo — e vincula o plano pago à loja recém-criada.
+		if input.TokenAssinatura != "" {
+			assinatura, err := assinaturaRepo.BuscarPorToken(input.TokenAssinatura)
+			if err != nil {
+				return errors.New("link de finalização inválido ou já utilizado")
+			}
+			loja.Plano = assinatura.Plano
+			loja.StripeCustomerID = assinatura.StripeCustomerID
+			loja.StripeSubscriptionID = assinatura.StripeSubscriptionID
+
+			if err := assinaturaRepo.MarcarUsado(assinatura.ID); err != nil {
+				return fmt.Errorf("marcando assinatura como usada: %w", err)
+			}
 		}
 
 		// Se veio um código de afiliado, resolve e vincula. Um código
 		// inválido/inexistente não deve travar o cadastro — só ignora
-		// silenciosamente e loga, pra não quebrar a experiência de quem
-		// está criando a loja por causa de um link mal formado.
+		// silenciosamente e loga.
 		if input.CodigoAfiliado != "" {
 			afiliado, err := afiliadoRepo.BuscarPorCodigo(input.CodigoAfiliado)
 			if err != nil {
@@ -108,11 +127,6 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 	return s.gerarToken(usuario.ID, loja.ID)
 }
 
-// Login confere email/senha e devolve um token novo.
-//
-// De propósito, usamos a mesma mensagem de erro tanto pra "email não
-// existe" quanto pra "senha errada" — não queremos dar pista pra quem
-// está tentando adivinhar quais emails estão cadastrados.
 func (s *AuthService) Login(email, senha string) (string, error) {
 	usuarioRepo := repository.NewUsuarioRepository(s.db)
 	lojaRepo := repository.NewLojaRepository(s.db)
@@ -144,8 +158,6 @@ func (s *AuthService) gerarToken(usuarioID, lojaID uint) (string, error) {
 	return token.SignedString([]byte(s.jwtSecret))
 }
 
-// gerarSlugUnico tenta o slug "limpo" primeiro; se já existir (duas lojas
-// com nome parecido), vai acrescentando um número até achar um livre.
 func gerarSlugUnico(lojaRepo *repository.LojaRepository, nomeLoja string) (string, error) {
 	base := gerarSlug(nomeLoja)
 	slug := base

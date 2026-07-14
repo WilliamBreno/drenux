@@ -8,6 +8,7 @@ import { CardapioPublico } from './pages/CardapioPublico';
 import { RastrearPedido } from './pages/RastrearPedido';
 import { Login } from './pages/Login';
 import { Cadastro } from './pages/Cadastro';
+import { FinalizarCadastro } from './pages/FinalizarCadastro';
 import { RotaProtegida } from './components/RotaProtegida';
 import { Dashboard } from './pages/admin/Dashboard';
 import { Inicio } from './pages/admin/Inicio';
@@ -38,6 +39,7 @@ function App() {
 
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/cadastro/finalizar" element={<FinalizarCadastro />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 

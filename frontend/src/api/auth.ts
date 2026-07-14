@@ -6,6 +6,7 @@ interface CadastroInput {
   senha: string;
   nome_loja: string;
   codigo_afiliado?: string;
+  token_assinatura?: string;
 }
 
 interface LoginInput {

@@ -4,14 +4,24 @@ import { cadastrar } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import { Campo } from '../components/Campo';
 
+const NOMES_PLANO: Record<string, string> = {
+  start: 'Start',
+  pro: 'Pro',
+  scale: 'Scale',
+};
+
 export function Cadastro() {
   const navigate = useNavigate();
   const setToken = useAuthStore((state) => state.setToken);
   const [searchParams] = useSearchParams();
+
   const codigoAfiliado = searchParams.get('ref') || undefined;
+  const tokenAssinatura = searchParams.get('token_assinatura') || undefined;
+  const emailPreenchido = searchParams.get('email') || '';
+  const planoConfirmado = searchParams.get('plano');
 
   const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailPreenchido);
   const [senha, setSenha] = useState('');
   const [nomeLoja, setNomeLoja] = useState('');
   const [erro, setErro] = useState<string | null>(null);
@@ -28,6 +38,7 @@ export function Cadastro() {
         senha,
         nome_loja: nomeLoja,
         codigo_afiliado: codigoAfiliado,
+        token_assinatura: tokenAssinatura,
       });
       setToken(token);
       navigate('/admin');
@@ -48,6 +59,12 @@ export function Cadastro() {
           <h1 className="font-display text-2xl tracking-wide text-tinta">Crie sua loja</h1>
           <p className="mt-1 text-sm text-tinta-suave">Seu cardápio online em poucos minutos</p>
         </div>
+
+        {planoConfirmado && NOMES_PLANO[planoConfirmado] && (
+          <div className="rounded-lg bg-acento/10 px-3 py-2 text-center text-sm font-medium text-acento">
+            ✓ Pagamento do plano {NOMES_PLANO[planoConfirmado]} confirmado
+          </div>
+        )}
 
         <Campo label="Seu nome">
           <input
@@ -72,10 +89,18 @@ export function Cadastro() {
           <input
             type="email"
             required
+            readOnly={!!tokenAssinatura}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+            className={`w-full rounded-lg border border-tinta/20 px-3 py-2 text-tinta outline-none focus:border-acento ${
+              tokenAssinatura ? 'bg-fundo/50 text-tinta-suave' : 'bg-fundo'
+            }`}
           />
+          {tokenAssinatura && (
+            <span className="mt-1 block text-xs text-tinta-suave">
+              Email do pagamento — não pode ser alterado aqui.
+            </span>
+          )}
         </Campo>
 
         <Campo label="Senha">
