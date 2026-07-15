@@ -10,6 +10,7 @@ const linksBase = [
   { to: '/admin/categorias', label: 'Categorias' },
   { to: '/admin/cupons', label: 'Cupons' },
   { to: '/admin/configuracoes', label: 'Configurações' },
+  { to: '/admin/meu-plano', label: 'Meu Plano' },
 ];
 
 export function Dashboard() {
@@ -57,6 +58,7 @@ export function Dashboard() {
           <NavLink
             key={link.to}
             to={link.to}
+            end={link.to === '/admin'}
             className={({ isActive }) =>
               `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition ${
                 isActive

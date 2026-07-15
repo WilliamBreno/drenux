@@ -380,6 +380,212 @@ func (s *StripeService) BuscarAssinaturaPendentePorSessionID(sessionID string) (
 	return s.assinaturaRepo.BuscarPorSessionID(sessionID)
 }
 
+// ordemPlano define a hierarquia pra decidir se uma troca é upgrade
+// (imediato) ou downgrade (agendado pro fim do ciclo).
+var ordemPlano = map[string]int{"start": 0, "pro": 1, "scale": 2}
+
+// MudarPlanoResultado informa o frontend se a troca já foi aplicada
+// (upgrade/troca entre pagos) ou se precisa redirecionar pro Checkout
+// (Start → Pro/Scale, quando ainda não existe assinatura).
+type MudarPlanoResultado struct {
+	CheckoutURL string
+	Imediato    bool
+}
+
+// MudarPlano decide o caminho certo conforme a direção da troca:
+//   - Start → Pro/Scale: cria uma assinatura nova via Checkout (não tem
+//     cartão salvo ainda, precisa da Stripe coletar).
+//   - Pro ↔ Scale: já tem assinatura ativa, só troca o Price — imediato,
+//     com proration automático da própria Stripe.
+//   - Qualquer downgrade: agenda pro fim do ciclo atual, sem mexer na
+//     assinatura agora — aplicado depois pelo webhook de renovação.
+func (s *StripeService) MudarPlano(ctx context.Context, lojaID uint, novoPlano string) (*MudarPlanoResultado, error) {
+	if novoPlano != "start" && novoPlano != "pro" && novoPlano != "scale" {
+		return nil, fmt.Errorf("plano inválido: %s", novoPlano)
+	}
+
+	loja, err := s.lojaRepo.BuscarPorID(lojaID)
+	if err != nil {
+		return nil, errors.New("loja não encontrada")
+	}
+
+	if novoPlano == loja.Plano && loja.PlanoAgendado == nil {
+		return nil, errors.New("essa loja já está nesse plano")
+	}
+
+	atual, novo := ordemPlano[loja.Plano], ordemPlano[novoPlano]
+
+	// Upgrade ou troca entre planos pagos: imediato
+	if novo > atual {
+		if loja.StripeSubscriptionID == "" {
+			// Sem assinatura ativa ainda (vindo do Start) — precisa do
+			// Checkout da Stripe pra coletar o cartão.
+			url, err := s.criarCheckoutMudancaPlano(ctx, loja.ID, novoPlano)
+			if err != nil {
+				return nil, err
+			}
+			return &MudarPlanoResultado{CheckoutURL: url, Imediato: false}, nil
+		}
+
+		// Já tem assinatura — só troca o Price, sem passar pelo Checkout
+		if err := s.atualizarPriceDaAssinatura(ctx, loja.StripeSubscriptionID, novoPlano); err != nil {
+			return nil, err
+		}
+		if err := s.lojaRepo.AtualizarPlano(loja.ID, novoPlano, "", ""); err != nil {
+			return nil, err
+		}
+		return &MudarPlanoResultado{Imediato: true}, nil
+	}
+
+	// Downgrade: agenda pro fim do ciclo, não mexe em nada agora
+	if err := s.lojaRepo.AtualizarPlanoAgendado(loja.ID, &novoPlano); err != nil {
+		return nil, err
+	}
+	return &MudarPlanoResultado{Imediato: false}, nil
+}
+
+// CancelarMudancaAgendada desfaz um downgrade agendado — a loja
+// continua no plano atual normalmente, sem nenhuma mudança futura.
+func (s *StripeService) CancelarMudancaAgendada(lojaID uint) error {
+	return s.lojaRepo.AtualizarPlanoAgendado(lojaID, nil)
+}
+
+// criarCheckoutMudancaPlano monta o Checkout de assinatura pra uma loja
+// que JÁ EXISTE (diferente de CriarCheckoutAssinatura, que é pro
+// cadastro de loja nova) — por isso os metadados levam loja_id direto,
+// sem precisar do fluxo de "finalizar cadastro".
+func (s *StripeService) criarCheckoutMudancaPlano(ctx context.Context, lojaID uint, plano string) (string, error) {
+	priceID, err := s.obterOuCriarPriceAssinatura(ctx, plano)
+	if err != nil {
+		return "", err
+	}
+
+	successURL := fmt.Sprintf("%s/admin/configuracoes?plano_atualizado=1", s.frontendURL)
+	cancelURL := fmt.Sprintf("%s/admin/configuracoes", s.frontendURL)
+
+	params := &stripe.CheckoutSessionCreateParams{
+		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
+			{Price: stripe.String(priceID), Quantity: stripe.Int64(1)},
+		},
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+		Metadata: map[string]string{
+			"tipo":    "mudanca_plano",
+			"loja_id": strconv.FormatUint(uint64(lojaID), 10),
+			"plano":   plano,
+		},
+	}
+
+	session, err := s.client.V1CheckoutSessions.Create(ctx, params)
+	if err != nil {
+		return "", fmt.Errorf("criando sessão de mudança de plano: %w", err)
+	}
+
+	return session.URL, nil
+}
+
+// atualizarPriceDaAssinatura troca o Price de uma assinatura já ativa
+// (Pro ↔ Scale) sem passar pelo Checkout — a Stripe calcula sozinha a
+// proporção a cobrar/creditar pelo resto do ciclo atual.
+func (s *StripeService) atualizarPriceDaAssinatura(ctx context.Context, subscriptionID, novoPlano string) error {
+	novoPriceID, err := s.obterOuCriarPriceAssinatura(ctx, novoPlano)
+	if err != nil {
+		return err
+	}
+
+	sub, err := s.client.V1Subscriptions.Retrieve(ctx, subscriptionID, nil)
+	if err != nil {
+		return fmt.Errorf("buscando assinatura atual: %w", err)
+	}
+	if len(sub.Items.Data) == 0 {
+		return errors.New("assinatura sem itens — estado inesperado")
+	}
+	itemID := sub.Items.Data[0].ID
+
+	_, err = s.client.V1Subscriptions.Update(ctx, subscriptionID, &stripe.SubscriptionUpdateParams{
+		Items: []*stripe.SubscriptionUpdateItemParams{
+			{ID: stripe.String(itemID), Price: stripe.String(novoPriceID)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("atualizando price da assinatura: %w", err)
+	}
+
+	return nil
+}
+
+// processarMudancaPlanoConfirmada aplica a troca imediatamente quando o
+// Checkout de uma loja JÁ EXISTENTE (Start → Pro/Scale) é confirmado.
+func (s *StripeService) processarMudancaPlanoConfirmada(session *stripe.CheckoutSession) error {
+	lojaIDStr := session.Metadata["loja_id"]
+	plano := session.Metadata["plano"]
+
+	lojaID, err := strconv.ParseUint(lojaIDStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("loja_id inválido nos metadados: %w", err)
+	}
+
+	customerID := ""
+	if session.Customer != nil {
+		customerID = session.Customer.ID
+	}
+	subscriptionID := ""
+	if session.Subscription != nil {
+		subscriptionID = session.Subscription.ID
+	}
+
+	return s.lojaRepo.AtualizarPlano(uint(lojaID), plano, customerID, subscriptionID)
+}
+
+// processarRenovacaoAssinatura roda a cada renovação mensal bem-sucedida
+// (evento invoice.payment_succeeded) e aplica um downgrade agendado, se
+// existir — é o único lugar onde PlanoAgendado é consumido.
+func (s *StripeService) processarRenovacaoAssinatura(payload []byte) error {
+	var invoice stripe.Invoice
+	if err := json.Unmarshal(payload, &invoice); err != nil {
+		return fmt.Errorf("lendo dados da invoice: %w", err)
+	}
+
+	// Desde a versão "Basil" da API, invoice.subscription foi
+	// descontinuado — o caminho certo agora é invoice.parent.
+	// subscription_details.subscription (só existe quando parent.type
+	// == "subscription_details").
+	if invoice.Parent == nil || invoice.Parent.SubscriptionDetails == nil || invoice.Parent.SubscriptionDetails.Subscription == nil {
+		return nil // fatura avulsa, não é de assinatura — ignora
+	}
+	subscriptionID := invoice.Parent.SubscriptionDetails.Subscription.ID
+
+	loja, err := s.lojaRepo.BuscarPorStripeSubscriptionID(subscriptionID)
+	if err != nil {
+		return nil // renovação de assinatura que não é de loja nossa (não deveria acontecer, mas não é erro fatal)
+	}
+
+	if loja.PlanoAgendado == nil {
+		return nil // nada agendado, renovação normal
+	}
+
+	novoPlano := *loja.PlanoAgendado
+
+	if novoPlano == "start" {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if _, err := s.client.V1Subscriptions.Cancel(ctx, loja.StripeSubscriptionID, nil); err != nil {
+			log.Printf("aviso: falha ao cancelar assinatura da loja %d no downgrade agendado: %v", loja.ID, err)
+		}
+		return s.lojaRepo.LimparAssinatura(loja.ID)
+	}
+
+	// Downgrade pra outro plano pago (ex: Scale → Pro)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := s.atualizarPriceDaAssinatura(ctx, loja.StripeSubscriptionID, novoPlano); err != nil {
+		log.Printf("aviso: falha ao aplicar downgrade agendado da loja %d: %v", loja.ID, err)
+		return err
+	}
+	return s.lojaRepo.AtualizarPlano(loja.ID, novoPlano, "", "")
+}
+
 // ProcessarWebhook valida a assinatura do evento e trata os três casos
 // possíveis: pedido normal pago, frete de itens guardados pago, ou
 // assinatura de plano (Pro/Scale) confirmada.
@@ -387,6 +593,12 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 	event, err := stripe.ConstructEvent(payload, signature, s.webhookSecret)
 	if err != nil {
 		return fmt.Errorf("assinatura do webhook inválida: %w", err)
+	}
+
+	// Renovação de assinatura — é aqui que downgrades agendados são
+	// aplicados, uma vez por ciclo de cobrança.
+	if event.Type == "invoice.payment_succeeded" {
+		return s.processarRenovacaoAssinatura(event.Data.Raw)
 	}
 
 	if event.Type != "checkout.session.completed" {
@@ -411,12 +623,19 @@ func (s *StripeService) ProcessarWebhook(payload []byte, signature string) error
 		return nil
 	}
 
-	// Caso 2: assinatura de plano Pro/Scale confirmada
+	// Caso 2: assinatura de plano Pro/Scale confirmada (loja NOVA, ainda
+	// não cadastrada — vem do fluxo de cadastro)
 	if tipo, ok := session.Metadata["tipo"]; ok && tipo == "assinatura_plano" {
 		return s.processarAssinaturaConfirmada(&session)
 	}
 
-	// Caso 3: pedido normal
+	// Caso 3: mudança de plano de uma loja JÁ EXISTENTE (Start → Pro/Scale
+	// pedido de dentro do painel admin)
+	if tipo, ok := session.Metadata["tipo"]; ok && tipo == "mudanca_plano" {
+		return s.processarMudancaPlanoConfirmada(&session)
+	}
+
+	// Caso 4: pedido normal
 	pedidoIDStr, ok := session.Metadata["pedido_id"]
 	if !ok {
 		return errors.New("evento sem pedido_id, solicitacao_id nem tipo de assinatura nos metadados")

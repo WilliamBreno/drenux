@@ -18,6 +18,7 @@ import { Pedidos } from './pages/admin/Pedidos';
 import { CompartilharLocalizacao } from './pages/admin/CompartilharLocalizacao';
 import { Cupons } from './pages/admin/Cupons';
 import { Configuracoes } from './pages/admin/Configuracoes';
+import { MeuPlano } from './pages/admin/MeuPlano';
 import { LoginAfiliado } from './pages/afiliado/Login';
 import { DashboardAfiliado } from './pages/afiliado/Dashboard';
 import { EsqueciSenhaAfiliado } from './pages/afiliado/EsqueciSenha';
@@ -53,6 +54,7 @@ function App() {
               <Route path="pedidos/:id/localizacao" element={<CompartilharLocalizacao />} />
               <Route path="cupons" element={<Cupons />} />
               <Route path="configuracoes" element={<Configuracoes />} />
+              <Route path="meu-plano" element={<MeuPlano />} />
             </Route>
           </Route>
 

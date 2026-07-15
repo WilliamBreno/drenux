@@ -95,6 +95,21 @@ export async function atualizarConfiguracoes(input: ConfiguracoesInput): Promise
   await api.put('/admin/loja', input);
 }
 
+// Plano
+export interface MudarPlanoResponse {
+  checkout_url: string;
+  imediato: boolean;
+}
+
+export async function mudarPlano(plano: 'start' | 'pro' | 'scale'): Promise<MudarPlanoResponse> {
+  const { data } = await api.post<MudarPlanoResponse>('/admin/plano/mudar', { plano });
+  return data;
+}
+
+export async function cancelarMudancaAgendada(): Promise<void> {
+  await api.delete('/admin/plano/agendamento');
+}
+
 // Variações
 export interface VariacaoInput {
   nome: string;

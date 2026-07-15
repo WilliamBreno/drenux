@@ -61,6 +61,10 @@ func (h *PlanoHandler) VerificarToken(c *gin.Context) {
 	})
 }
 
+type mudarPlanoRequest struct {
+	Plano string `json:"plano" binding:"required,oneof=start pro scale"`
+}
+
 // VerificarSessao atende GET /planos/verificar-sessao?session_id=XXX —
 // usado no redirecionamento direto da Stripe, logo após o pagamento.
 // Pode retornar 404 nos primeiros segundos (webhook ainda processando)
@@ -83,4 +87,40 @@ func (h *PlanoHandler) VerificarSessao(c *gin.Context) {
 		"plano": assinatura.Plano,
 		"token": assinatura.Token,
 	})
+}
+
+// MudarPlano atende POST /admin/plano/mudar — protegida, chamada pelo
+// dono da loja na tela "Meu Plano".
+func (h *PlanoHandler) MudarPlano(c *gin.Context) {
+	lojaID := c.GetUint("loja_id")
+
+	var req mudarPlanoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	resultado, err := h.stripeService.MudarPlano(c.Request.Context(), lojaID, req.Plano)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"checkout_url": resultado.CheckoutURL,
+		"imediato":     resultado.Imediato,
+	})
+}
+
+// CancelarMudancaAgendada atende DELETE /admin/plano/agendamento —
+// desfaz um downgrade agendado, mantendo a loja no plano atual.
+func (h *PlanoHandler) CancelarMudancaAgendada(c *gin.Context) {
+	lojaID := c.GetUint("loja_id")
+
+	if err := h.stripeService.CancelarMudancaAgendada(lojaID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"sucesso": true})
 }

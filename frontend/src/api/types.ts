@@ -99,6 +99,8 @@ export interface Loja {
   tema: string;
   created_at: string;
   updated_at: string;
+  plano: string; // "start" | "pro" | "scale"
+  plano_agendado: string | null;
 }
 
 export interface CardapioPublico {

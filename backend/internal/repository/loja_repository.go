@@ -33,10 +33,53 @@ func (r *LojaRepository) BuscarPorID(id uint) (*domain.Loja, error) {
 	return &loja, nil
 }
 
-// AtualizarStripeAccountID grava o ID da conta Stripe Connect da loja,
-// gerado na primeira vez que o onboarding é iniciado.
+// BuscarPorStripeSubscriptionID é usado pelo webhook de renovação de
+// assinatura, pra achar qual loja pertence a uma subscription da Stripe.
+func (r *LojaRepository) BuscarPorStripeSubscriptionID(subscriptionID string) (*domain.Loja, error) {
+	var loja domain.Loja
+	if err := r.db.Where("stripe_subscription_id = ?", subscriptionID).First(&loja).Error; err != nil {
+		return nil, err
+	}
+	return &loja, nil
+}
+
 func (r *LojaRepository) AtualizarStripeAccountID(lojaID uint, stripeAccountID string) error {
 	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Update("stripe_account_id", stripeAccountID).Error
+}
+
+// AtualizarPlano aplica uma troca de plano imediatamente (upgrade ou
+// troca entre planos pagos) — usado tanto na confirmação do checkout de
+// nova assinatura quanto na troca direta de Price numa assinatura já
+// existente.
+func (r *LojaRepository) AtualizarPlano(lojaID uint, plano, stripeCustomerID, stripeSubscriptionID string) error {
+	updates := map[string]interface{}{
+		"plano":            plano,
+		"plano_agendado":   nil,
+	}
+	if stripeCustomerID != "" {
+		updates["stripe_customer_id"] = stripeCustomerID
+	}
+	if stripeSubscriptionID != "" {
+		updates["stripe_subscription_id"] = stripeSubscriptionID
+	}
+	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Updates(updates).Error
+}
+
+// AtualizarPlanoAgendado marca (ou limpa, se nil) um downgrade pendente
+// pro fim do ciclo de cobrança atual.
+func (r *LojaRepository) AtualizarPlanoAgendado(lojaID uint, planoAgendado *string) error {
+	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Update("plano_agendado", planoAgendado).Error
+}
+
+// LimparAssinatura remove os dados da assinatura Stripe da loja —
+// usado quando um downgrade agendado pro Start é aplicado (cancela a
+// assinatura de vez).
+func (r *LojaRepository) LimparAssinatura(lojaID uint) error {
+	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Updates(map[string]interface{}{
+		"plano":                  "start",
+		"plano_agendado":         nil,
+		"stripe_subscription_id": "",
+	}).Error
 }
 
 // ConfiguracoesLoja agrupa todos os campos editáveis pelo dono no painel.
@@ -60,11 +103,6 @@ type ConfiguracoesLoja struct {
 	Tema                    string
 	AceitaGuardarEntregar   bool
 
-	// Endereço de origem da loja, usado como ponto de partida no cálculo
-	// de frete por quilometragem e no fluxo de guardar/entregar depois.
-	// Latitude/Longitude/Cidade/Estado são preenchidas pelo handler (via
-	// geocodificação) antes de chegar aqui — esse repositório só grava o
-	// que já vier pronto.
 	Endereco  string
 	Latitude  float64
 	Longitude float64
@@ -72,7 +110,6 @@ type ConfiguracoesLoja struct {
 	Estado    string
 }
 
-// AtualizarConfiguracoes grava todos os campos editáveis da loja de uma vez.
 func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLoja) error {
 	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Updates(map[string]interface{}{
 		"whatsapp_numero":           cfg.WhatsappNumero,
@@ -101,8 +138,6 @@ func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLo
 	}).Error
 }
 
-// BuscarPorSlug é usado pelo cardápio público — é assim que o cliente
-// final acessa a loja, sem precisar saber o ID interno dela.
 func (r *LojaRepository) BuscarPorSlug(slug string) (*domain.Loja, error) {
 	var loja domain.Loja
 	if err := r.db.Where("slug = ?", slug).First(&loja).Error; err != nil {
@@ -111,8 +146,6 @@ func (r *LojaRepository) BuscarPorSlug(slug string) (*domain.Loja, error) {
 	return &loja, nil
 }
 
-// ListarComWhatsapp retorna todas as lojas que têm número de WhatsApp
-// configurado — usada pelo relatório semanal pra saber quem notificar.
 func (r *LojaRepository) ListarComWhatsapp() ([]domain.Loja, error) {
 	var lojas []domain.Loja
 	if err := r.db.Where("whatsapp_numero != ''").Find(&lojas).Error; err != nil {
@@ -121,8 +154,6 @@ func (r *LojaRepository) ListarComWhatsapp() ([]domain.Loja, error) {
 	return lojas, nil
 }
 
-// SlugExiste confere se um slug já está em uso, pra geração de slug único
-// no cadastro.
 func (r *LojaRepository) SlugExiste(slug string) (bool, error) {
 	var total int64
 	if err := r.db.Model(&domain.Loja{}).Where("slug = ?", slug).Count(&total).Error; err != nil {
