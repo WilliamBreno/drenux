@@ -53,6 +53,10 @@ type Loja struct {
 
 	AceitaGuardarEntregar bool `gorm:"default:false" json:"aceita_guardar_entregar"`
 
+	// SegmentoPrincipal reaproveita o enum TipoProduto (alimenticio/mercadoria):
+	// define o tipo padrão de produtos novos e o fluxo de catálogo sugerido.
+	SegmentoPrincipal TipoProduto `gorm:"size:20;default:'alimenticio'" json:"segmento_principal"`
+
 	AfiliadoID *uint `gorm:"index" json:"-"`
 
 	CreatedAt time.Time `json:"created_at"`

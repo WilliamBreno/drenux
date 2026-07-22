@@ -34,6 +34,7 @@ func main() {
 		&domain.Produto{},
 		&domain.FotoProduto{},
 		&domain.VariacaoProduto{},
+		&domain.FotoVariacao{},
 		&domain.Cupom{},
 		&domain.Pedido{},
 		&domain.ItemPedido{},
@@ -70,6 +71,7 @@ func main() {
 
 	variacaoService := service.NewVariacaoService(db)
 	variacaoHandler := handler.NewVariacaoHandler(variacaoService)
+	fotoVariacaoHandler := handler.NewFotoVariacaoHandler(db)
 
 	distanciaService := service.NewDistanciaService()
 
@@ -195,6 +197,8 @@ func main() {
 	variacoes.POST("/:produtoId", variacaoHandler.Criar)
 	variacoes.PUT("/:produtoId/:variacaoId", variacaoHandler.Atualizar)
 	variacoes.DELETE("/:produtoId/:variacaoId", variacaoHandler.Deletar)
+	variacoes.POST("/:produtoId/:variacaoId/fotos", fotoVariacaoHandler.Adicionar)
+	variacoes.DELETE("/:produtoId/:variacaoId/fotos/:fotoId", fotoVariacaoHandler.Deletar)
 
 	admin.GET("/pedidos", pedidoHandler.Listar)
 	admin.PUT("/pedidos/:id/status-entrega", pedidoHandler.AtualizarStatusEntrega)

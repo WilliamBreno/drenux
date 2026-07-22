@@ -52,6 +52,7 @@ type configuracoesRequest struct {
 	Tema                    string  `json:"tema"`
 	Endereco                string  `json:"endereco"`
 	AceitaGuardarEntregar   bool    `json:"aceita_guardar_entregar"`
+	SegmentoPrincipal       string  `json:"segmento_principal" binding:"required,oneof=alimenticio mercadoria"`
 }
 
 // AtualizarConfiguracoes atende PUT /admin/loja
@@ -109,6 +110,7 @@ func (h *LojaHandler) AtualizarConfiguracoes(c *gin.Context) {
 		ValorMinimoPedido:       req.ValorMinimoPedido,
 		Tema:                    req.Tema,
 		AceitaGuardarEntregar:   req.AceitaGuardarEntregar,
+		SegmentoPrincipal:       req.SegmentoPrincipal,
 		Endereco:                req.Endereco,
 		Latitude:                latitude,
 		Longitude:               longitude,

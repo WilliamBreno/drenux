@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ItemCarrinho, Produto, VariacaoProduto } from '../api/types';
+import { precoItem } from '../lib/utils';
 
 // Chave única do item = produto_id + variacao_id (ou só produto_id se sem variação)
 function chaveItem(produtoId: number, variacaoId?: number): string {
@@ -65,8 +66,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   total: () =>
     get().itens.reduce(
-      (soma, item) =>
-        soma + (item.produto.preco + (item.variacao?.preco_adicional ?? 0)) * item.quantidade,
+      (soma, item) => soma + precoItem(item.produto, item.variacao) * item.quantidade,
       0
     ),
 }));

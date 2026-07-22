@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCartStore } from '../store/cartStore';
 import type { Produto, VariacaoProduto } from '../api/types';
 import { ImagemModal } from './ImagemModal';
+import { precoItem } from '../lib/utils';
 
 interface Props {
   produto: Produto;
@@ -12,14 +13,6 @@ export function ProdutoCard({ produto }: Props) {
   const variacoes = produto.variacoes?.filter((v) => v.disponivel) ?? [];
   const temVariacoes = variacoes.length > 0;
 
-  // Monta lista de fotos — usa galeria se tiver, senão a foto legada
-  const fotos =
-    produto.fotos && produto.fotos.length > 0
-      ? produto.fotos
-      : produto.foto_url
-      ? [{ id: 0, produto_id: produto.id, url: produto.foto_url, ordem: 0 }]
-      : [];
-
   const [fotoAtiva, setFotoAtiva] = useState(0);
   const [modalAberto, setModalAberto] = useState(false);
   const [modalIndice, setModalIndice] = useState(0);
@@ -28,7 +21,23 @@ export function ProdutoCard({ produto }: Props) {
     variacoes.length === 1 ? variacoes[0] : null
   );
 
-  const precoFinal = produto.preco + (variacaoSelecionada?.preco_adicional ?? 0);
+  // A variação escolhida pode ter fotos próprias (modo de preço
+  // "absoluto") — nesse caso elas substituem a galeria do produto.
+  const fotos =
+    variacaoSelecionada?.fotos && variacaoSelecionada.fotos.length > 0
+      ? variacaoSelecionada.fotos
+      : produto.fotos && produto.fotos.length > 0
+      ? produto.fotos
+      : produto.foto_url
+      ? [{ id: 0, produto_id: produto.id, url: produto.foto_url, ordem: 0 }]
+      : [];
+
+  function selecionarVariacao(v: VariacaoProduto | null) {
+    setVariacaoSelecionada(v);
+    setFotoAtiva(0);
+  }
+
+  const precoFinal = precoItem(produto, variacaoSelecionada);
   const podeAdicionar = !temVariacoes || variacaoSelecionada !== null;
 
   function abrirModal(indice: number) {
@@ -40,7 +49,7 @@ export function ProdutoCard({ produto }: Props) {
   function handleAdicionar() {
     if (!podeAdicionar) return;
     adicionar(produto, variacaoSelecionada ?? undefined);
-    if (variacoes.length > 1) setVariacaoSelecionada(null);
+    if (variacoes.length > 1) selecionarVariacao(null);
   }
 
   return (
@@ -101,7 +110,7 @@ export function ProdutoCard({ produto }: Props) {
               {variacoes.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => setVariacaoSelecionada(variacaoSelecionada?.id === v.id ? null : v)}
+                  onClick={() => selecionarVariacao(variacaoSelecionada?.id === v.id ? null : v)}
                   className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                     variacaoSelecionada?.id === v.id
                       ? 'border-acento bg-acento text-superficie'
@@ -109,10 +118,14 @@ export function ProdutoCard({ produto }: Props) {
                   }`}
                 >
                   {v.nome}
-                  {v.preco_adicional > 0 && (
-                    <span className="ml-1 opacity-70">
-                      +R${v.preco_adicional.toFixed(2).replace('.', ',')}
-                    </span>
+                  {v.mostrar_valor_adicional && (
+                    v.modo_preco === 'absoluto'
+                      ? <span className="ml-1 opacity-70">R${v.preco_adicional.toFixed(2).replace('.', ',')}</span>
+                      : v.preco_adicional > 0 && (
+                        <span className="ml-1 opacity-70">
+                          +R${v.preco_adicional.toFixed(2).replace('.', ',')}
+                        </span>
+                      )
                   )}
                 </button>
               ))}

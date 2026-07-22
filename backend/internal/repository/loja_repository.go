@@ -53,8 +53,8 @@ func (r *LojaRepository) AtualizarStripeAccountID(lojaID uint, stripeAccountID s
 // existente.
 func (r *LojaRepository) AtualizarPlano(lojaID uint, plano, stripeCustomerID, stripeSubscriptionID string) error {
 	updates := map[string]interface{}{
-		"plano":            plano,
-		"plano_agendado":   nil,
+		"plano":          plano,
+		"plano_agendado": nil,
 	}
 	if stripeCustomerID != "" {
 		updates["stripe_customer_id"] = stripeCustomerID
@@ -102,6 +102,7 @@ type ConfiguracoesLoja struct {
 	ValorMinimoPedido       float64
 	Tema                    string
 	AceitaGuardarEntregar   bool
+	SegmentoPrincipal       string
 
 	Endereco  string
 	Latitude  float64
@@ -130,6 +131,7 @@ func (r *LojaRepository) AtualizarConfiguracoes(lojaID uint, cfg ConfiguracoesLo
 		"valor_minimo_pedido":       cfg.ValorMinimoPedido,
 		"tema":                      cfg.Tema,
 		"aceita_guardar_entregar":   cfg.AceitaGuardarEntregar,
+		"segmento_principal":        cfg.SegmentoPrincipal,
 		"endereco":                  cfg.Endereco,
 		"latitude":                  cfg.Latitude,
 		"longitude":                 cfg.Longitude,

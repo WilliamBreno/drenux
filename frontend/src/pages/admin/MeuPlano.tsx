@@ -5,20 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-
-interface PlanoInfo {
-  id: 'start' | 'pro' | 'scale';
-  nome: string;
-  mensal: number;
-  taxa: number;
-  desc: string;
-}
-
-const PLANOS: PlanoInfo[] = [
-  { id: 'start', nome: 'Start', mensal: 0, taxa: 0.08, desc: 'Sem risco, comece de graça' },
-  { id: 'pro', nome: 'Pro', mensal: 129, taxa: 0.04, desc: 'Pra loja em crescimento' },
-  { id: 'scale', nome: 'Scale', mensal: 349, taxa: 0.015, desc: 'Volume alto, custo mínimo' },
-];
+import { PLANOS, custoPlano } from '../../lib/planos';
 
 const NOME_PLANO: Record<string, string> = { start: 'Start', pro: 'Pro', scale: 'Scale' };
 
@@ -41,7 +28,7 @@ export function MeuPlano() {
   const [erro, setErro] = useState<string | null>(null);
 
   const custos = useMemo(
-    () => PLANOS.map((p) => ({ ...p, total: p.mensal + p.taxa * faturamentoUsado })),
+    () => PLANOS.map((p) => ({ ...p, total: custoPlano(p, faturamentoUsado) })),
     [faturamentoUsado]
   );
   const menorCusto = Math.min(...custos.map((c) => c.total));

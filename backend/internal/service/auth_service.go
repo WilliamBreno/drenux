@@ -28,12 +28,13 @@ func NewAuthService(db *gorm.DB, jwtSecret string, emailSender *notification.Ema
 }
 
 type CadastroInput struct {
-	Nome             string
-	Email            string
-	Senha            string
-	NomeLoja         string
-	CodigoAfiliado   string // opcional — vem do ?ref=CODIGO capturado no frontend
-	TokenAssinatura  string // opcional — vem de /cadastro/finalizar?token=XXX, só existe pra planos Pro/Scale
+	Nome              string
+	Email             string
+	Senha             string
+	NomeLoja          string
+	SegmentoPrincipal string // "alimenticio" | "mercadoria" — define tipo padrão de produto e categorias iniciais
+	CodigoAfiliado    string // opcional — vem do ?ref=CODIGO capturado no frontend
+	TokenAssinatura   string // opcional — vem de /cadastro/finalizar?token=XXX, só existe pra planos Pro/Scale
 }
 
 // Cadastrar cria o usuário, a loja dele e as categorias padrão tudo numa
@@ -69,11 +70,17 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 			return fmt.Errorf("gerando slug da loja: %w", err)
 		}
 
+		segmento := domain.TipoProduto(input.SegmentoPrincipal)
+		if segmento != domain.TipoProdutoMercadoria {
+			segmento = domain.TipoProdutoAlimenticio
+		}
+
 		loja = domain.Loja{
-			UsuarioID: usuario.ID,
-			Nome:      input.NomeLoja,
-			Slug:      slug,
-			Plano:     "start",
+			UsuarioID:         usuario.ID,
+			Nome:              input.NomeLoja,
+			Slug:              slug,
+			Plano:             "start",
+			SegmentoPrincipal: segmento,
 		}
 
 		// Se veio um token de assinatura (pagamento de Pro/Scale já
@@ -110,11 +117,7 @@ func (s *AuthService) Cadastrar(input CadastroInput) (string, error) {
 			return fmt.Errorf("criando loja: %w", err)
 		}
 
-		categoriasPadrao := []domain.Categoria{
-			{LojaID: loja.ID, Nome: "Salgados"},
-			{LojaID: loja.ID, Nome: "Doces"},
-		}
-		if err := categoriaRepo.CriarVarias(categoriasPadrao); err != nil {
+		if err := categoriaRepo.CriarVarias(categoriasPadrao(segmento, loja.ID)); err != nil {
 			return fmt.Errorf("criando categorias padrão: %w", err)
 		}
 
@@ -156,6 +159,22 @@ func (s *AuthService) gerarToken(usuarioID, lojaID uint) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(s.jwtSecret))
+}
+
+// categoriasPadrao devolve as categorias iniciais de uma loja recém-criada,
+// variando conforme o segmento — lojas de mercadoria tendem a não usar as
+// categorias "Salgados"/"Doces", que fazem sentido só pro alimentício.
+func categoriasPadrao(segmento domain.TipoProduto, lojaID uint) []domain.Categoria {
+	if segmento == domain.TipoProdutoMercadoria {
+		return []domain.Categoria{
+			{LojaID: lojaID, Nome: "Mais vendidos"},
+			{LojaID: lojaID, Nome: "Novidades"},
+		}
+	}
+	return []domain.Categoria{
+		{LojaID: lojaID, Nome: "Salgados"},
+		{LojaID: lojaID, Nome: "Doces"},
+	}
 }
 
 func gerarSlugUnico(lojaRepo *repository.LojaRepository, nomeLoja string) (string, error) {

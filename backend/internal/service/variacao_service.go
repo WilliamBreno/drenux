@@ -10,12 +10,24 @@ import (
 )
 
 type VariacaoInput struct {
-	Nome           string
-	PrecoAdicional float64
-	Disponivel     bool
-	EstoqueAtual   *int
-	EstoqueAlerta  *int
-	Ordem          int
+	Nome                  string
+	PrecoAdicional        float64
+	Disponivel            bool
+	MostrarValorAdicional bool
+	ModoPreco             string
+	EstoqueAtual          *int
+	EstoqueAlerta         *int
+	Ordem                 int
+}
+
+// normalizarModoPreco garante que só os dois valores válidos do domínio
+// cheguem no banco — qualquer coisa diferente de "absoluto" vira "aditivo"
+// (o padrão/comportamento original).
+func normalizarModoPreco(modo string) domain.ModoPrecoVariacao {
+	if domain.ModoPrecoVariacao(modo) == domain.ModoPrecoAbsoluto {
+		return domain.ModoPrecoAbsoluto
+	}
+	return domain.ModoPrecoAditivo
 }
 
 type VariacaoService struct {
@@ -46,13 +58,15 @@ func (s *VariacaoService) Criar(lojaID, produtoID uint, input VariacaoInput) (*d
 	}
 
 	v := domain.VariacaoProduto{
-		ProdutoID:      produtoID,
-		Nome:           input.Nome,
-		PrecoAdicional: input.PrecoAdicional,
-		Disponivel:     input.Disponivel,
-		EstoqueAtual:   input.EstoqueAtual,
-		EstoqueAlerta:  input.EstoqueAlerta,
-		Ordem:          input.Ordem,
+		ProdutoID:             produtoID,
+		Nome:                  input.Nome,
+		PrecoAdicional:        input.PrecoAdicional,
+		Disponivel:            input.Disponivel,
+		MostrarValorAdicional: input.MostrarValorAdicional,
+		ModoPreco:             normalizarModoPreco(input.ModoPreco),
+		EstoqueAtual:          input.EstoqueAtual,
+		EstoqueAlerta:         input.EstoqueAlerta,
+		Ordem:                 input.Ordem,
 	}
 	if err := s.variacaoRepo.Criar(&v); err != nil {
 		return nil, fmt.Errorf("criando variação: %w", err)
@@ -73,6 +87,8 @@ func (s *VariacaoService) Atualizar(lojaID, produtoID, variacaoID uint, input Va
 	v.Nome = input.Nome
 	v.PrecoAdicional = input.PrecoAdicional
 	v.Disponivel = input.Disponivel
+	v.MostrarValorAdicional = input.MostrarValorAdicional
+	v.ModoPreco = normalizarModoPreco(input.ModoPreco)
 	v.EstoqueAtual = input.EstoqueAtual
 	v.EstoqueAlerta = input.EstoqueAlerta
 	v.Ordem = input.Ordem

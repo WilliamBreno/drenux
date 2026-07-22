@@ -15,7 +15,9 @@ func NewVariacaoRepository(db *gorm.DB) *VariacaoRepository {
 
 func (r *VariacaoRepository) ListarPorProduto(produtoID uint) ([]domain.VariacaoProduto, error) {
 	var variacoes []domain.VariacaoProduto
-	if err := r.db.Where("produto_id = ?", produtoID).Order("ordem, id").Find(&variacoes).Error; err != nil {
+	if err := r.db.Where("produto_id = ?", produtoID).
+		Preload("Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
+		Order("ordem, id").Find(&variacoes).Error; err != nil {
 		return nil, err
 	}
 	return variacoes, nil

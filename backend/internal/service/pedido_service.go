@@ -180,7 +180,11 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 					}
 					return fmt.Errorf("variação %q tem apenas %d unidade(s) disponível(is)", variacao.Nome, *variacao.EstoqueAtual)
 				}
-				precoUnit += variacao.PrecoAdicional
+				if variacao.ModoPreco == domain.ModoPrecoAbsoluto {
+					precoUnit = variacao.PrecoAdicional
+				} else {
+					precoUnit += variacao.PrecoAdicional
+				}
 				variacaoNome = variacao.Nome
 			} else {
 				if produto.EstoqueAtual != nil && *produto.EstoqueAtual < itemInput.Quantidade {

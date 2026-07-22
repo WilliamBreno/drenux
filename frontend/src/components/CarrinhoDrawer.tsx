@@ -5,6 +5,7 @@ import { validarCupom } from '../api/cupons';
 import { cotarFrete } from '../api/frete';
 import { Campo } from './Campo';
 import { EnderecoCampos, enderecoVazio, enderecoParaTexto, enderecoPreenchido, type EnderecoValor } from './EnderecoCampos';
+import { precoItem } from '../lib/utils';
 
 interface Props {
   aberto: boolean;
@@ -274,7 +275,7 @@ export function CarrinhoDrawer({ aberto, onFechar, slug, modoPedido, antecedenci
             <ul className="space-y-4">
               {itens.map((item) => {
                 const chave = item.variacao ? `${item.produto.id}-${item.variacao.id}` : `${item.produto.id}`;
-                const precoUnit = item.produto.preco + (item.variacao?.preco_adicional ?? 0);
+                const precoUnit = precoItem(item.produto, item.variacao);
                 return (
                   <li key={chave} className="flex items-center gap-3">
                     <div className="flex-1">

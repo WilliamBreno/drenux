@@ -10,12 +10,21 @@ export interface Categoria {
   updated_at: string;
 }
 
+// ModoPrecoVariacao: "aditivo" soma preco_adicional ao preço base do
+// produto (comportamento original); "absoluto" faz preco_adicional ser o
+// preço final da variação (ignora o preço base) — pensado pro segmento
+// "mercadoria", onde cada variação pode ter preço e fotos próprios.
+export type ModoPrecoVariacao = 'aditivo' | 'absoluto';
+
 export interface VariacaoProduto {
   id: number;
   produto_id: number;
   nome: string;
   preco_adicional: number;
   disponivel: boolean;
+  mostrar_valor_adicional: boolean;
+  modo_preco: ModoPrecoVariacao;
+  fotos?: FotoVariacao[];
   estoque_atual: number | null;
   estoque_alerta: number | null;
   ordem: number;
@@ -24,6 +33,13 @@ export interface VariacaoProduto {
 export interface FotoProduto {
   id: number;
   produto_id: number;
+  url: string;
+  ordem: number;
+}
+
+export interface FotoVariacao {
+  id: number;
+  variacao_id: number;
   url: string;
   ordem: number;
 }
@@ -86,6 +102,7 @@ export interface Loja {
   aceita_retirada: boolean;
   aceita_entrega: boolean;
   aceita_guardar_entregar: boolean;
+  segmento_principal: TipoProduto;
   taxa_entrega_tipo: TaxaEntregaTipo;
   taxa_entrega_valor: number;
   taxa_entrega_base: number;

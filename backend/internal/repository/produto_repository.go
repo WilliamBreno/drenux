@@ -23,6 +23,7 @@ func (r *ProdutoRepository) BuscarPorID(id uint) (*domain.Produto, error) {
 	if err := r.db.
 		Preload("Categoria").
 		Preload("Variacoes", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
+		Preload("Variacoes.Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		Preload("Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		First(&produto, id).Error; err != nil {
 		return nil, err
@@ -100,6 +101,7 @@ func (r *ProdutoRepository) ListarPorLoja(lojaID uint, apenasDisponiveis bool) (
 	query := r.db.Where("loja_id = ?", lojaID).
 		Preload("Categoria").
 		Preload("Variacoes", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
+		Preload("Variacoes.Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		Preload("Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") })
 	if apenasDisponiveis {
 		query = query.Where("disponivel = ?", true)

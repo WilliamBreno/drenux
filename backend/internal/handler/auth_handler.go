@@ -16,10 +16,13 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 }
 
 type cadastroRequest struct {
-	Nome     string `json:"nome" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Senha    string `json:"senha" binding:"required,min=6"`
-	NomeLoja string `json:"nome_loja" binding:"required"`
+	Nome              string `json:"nome" binding:"required"`
+	Email             string `json:"email" binding:"required,email"`
+	Senha             string `json:"senha" binding:"required,min=6"`
+	NomeLoja          string `json:"nome_loja" binding:"required"`
+	SegmentoPrincipal string `json:"segmento_principal" binding:"required,oneof=alimenticio mercadoria"`
+	CodigoAfiliado    string `json:"codigo_afiliado"`
+	TokenAssinatura   string `json:"token_assinatura"`
 }
 
 func (h *AuthHandler) Cadastrar(c *gin.Context) {
@@ -30,10 +33,13 @@ func (h *AuthHandler) Cadastrar(c *gin.Context) {
 	}
 
 	token, err := h.authService.Cadastrar(service.CadastroInput{
-		Nome:     req.Nome,
-		Email:    req.Email,
-		Senha:    req.Senha,
-		NomeLoja: req.NomeLoja,
+		Nome:              req.Nome,
+		Email:             req.Email,
+		Senha:             req.Senha,
+		NomeLoja:          req.NomeLoja,
+		SegmentoPrincipal: req.SegmentoPrincipal,
+		CodigoAfiliado:    req.CodigoAfiliado,
+		TokenAssinatura:   req.TokenAssinatura,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
@@ -63,6 +69,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
+
 type esqueciSenhaRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }

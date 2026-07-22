@@ -24,6 +24,7 @@ export function Cadastro() {
   const [email, setEmail] = useState(emailPreenchido);
   const [senha, setSenha] = useState('');
   const [nomeLoja, setNomeLoja] = useState('');
+  const [segmento, setSegmento] = useState<'alimenticio' | 'mercadoria'>('alimenticio');
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -37,6 +38,7 @@ export function Cadastro() {
         email,
         senha,
         nome_loja: nomeLoja,
+        segmento_principal: segmento,
         codigo_afiliado: codigoAfiliado,
         token_assinatura: tokenAssinatura,
       });
@@ -112,6 +114,33 @@ export function Cadastro() {
             onChange={(e) => setSenha(e.target.value)}
             className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
           />
+        </Campo>
+
+        <Campo label="O que sua loja vende principalmente?">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSegmento('alimenticio')}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                segmento === 'alimenticio'
+                  ? 'border-acento bg-acento/10 text-acento'
+                  : 'border-tinta/20 text-tinta-suave hover:border-tinta/40'
+              }`}
+            >
+              Comida e bebida
+            </button>
+            <button
+              type="button"
+              onClick={() => setSegmento('mercadoria')}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                segmento === 'mercadoria'
+                  ? 'border-acento bg-acento/10 text-acento'
+                  : 'border-tinta/20 text-tinta-suave hover:border-tinta/40'
+              }`}
+            >
+              Outros produtos
+            </button>
+          </div>
         </Campo>
 
         {erro && <p className="text-sm text-acento">{erro}</p>}

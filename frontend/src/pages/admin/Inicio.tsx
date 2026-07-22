@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { buscarDashboard } from '../../api/admin';
+import { buscarDashboard, buscarLoja } from '../../api/admin';
+import { PLANOS, planoMaisBarato, custoPlano } from '../../lib/planos';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -10,12 +12,15 @@ function moeda(v: number) {
   return `R$ ${v.toFixed(2).replace('.', ',')}`;
 }
 
+const NOME_PLANO: Record<string, string> = { start: 'Start', pro: 'Pro', scale: 'Scale' };
+
 export function Inicio() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: buscarDashboard,
     refetchInterval: 60_000, // atualiza a cada 1 min
   });
+  const { data: loja } = useQuery({ queryKey: ['loja'], queryFn: buscarLoja });
 
   if (isLoading) return <p className="text-tinta-suave">Carregando...</p>;
   if (!data) return null;
@@ -27,9 +32,30 @@ export function Inicio() {
   const totalMes = data.total_mes ?? 0;
   const pedidosSemana = data.pedidos_semana ?? 0;
 
+  // Alerta proativo: mesma conta da calculadora de "Meu Plano", só que
+  // aqui aparece sem o lojista precisar entrar na tela pra ver.
+  const planoAtual = loja ? PLANOS.find((p) => p.id === loja.plano) : undefined;
+  const recomendado = loja ? planoMaisBarato(totalMes) : null;
+  const economiaMensal = recomendado && planoAtual
+    ? custoPlano(planoAtual, totalMes) - custoPlano(recomendado, totalMes)
+    : 0;
+  const mostrarAlertaPlano = !!(recomendado && planoAtual && recomendado.id !== planoAtual.id && economiaMensal > 0);
+
   return (
     <div className="space-y-6">
       <h1 className="font-display text-2xl tracking-wide text-tinta">Visão geral</h1>
+
+      {mostrarAlertaPlano && recomendado && (
+        <Link
+          to="/admin/meu-plano"
+          className="block rounded-2xl border border-acento/30 bg-acento/5 p-4 shadow-sm transition hover:border-acento/50"
+        >
+          <p className="text-sm font-medium text-acento">
+            Com o faturamento deste mês ({moeda(totalMes)}), o plano {NOME_PLANO[recomendado.id]} sai mais barato pra você — economize {moeda(economiaMensal)}/mês.
+          </p>
+          <p className="mt-1 text-xs text-tinta-suave">Ver em Meu Plano →</p>
+        </Link>
+      )}
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-3 gap-3">

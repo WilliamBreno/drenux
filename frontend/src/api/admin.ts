@@ -85,6 +85,7 @@ export interface ConfiguracoesInput {
   aceita_retirada: boolean;
   aceita_entrega: boolean;
   aceita_guardar_entregar: boolean;
+  segmento_principal: 'alimenticio' | 'mercadoria';
   taxa_entrega_tipo: string;
   taxa_entrega_valor: number;
   valor_minimo_pedido: number;
@@ -115,6 +116,8 @@ export interface VariacaoInput {
   nome: string;
   preco_adicional: number;
   disponivel: boolean;
+  mostrar_valor_adicional: boolean;
+  modo_preco: import('./types').ModoPrecoVariacao;
   estoque_atual: number | null;
   estoque_alerta: number | null;
   ordem: number;
@@ -153,6 +156,16 @@ export async function adicionarFoto(produtoId: number, url: string, ordem: numbe
 
 export async function deletarFoto(produtoId: number, fotoId: number): Promise<void> {
   await api.delete(`/admin/fotos/${produtoId}/${fotoId}`);
+}
+
+// Fotos de variação (modo de preço "absoluto")
+export async function adicionarFotoVariacao(produtoId: number, variacaoId: number, url: string, ordem: number): Promise<import('./types').FotoVariacao> {
+  const { data } = await api.post(`/admin/variacoes/${produtoId}/${variacaoId}/fotos`, { url, ordem });
+  return data;
+}
+
+export async function deletarFotoVariacao(produtoId: number, variacaoId: number, fotoId: number): Promise<void> {
+  await api.delete(`/admin/variacoes/${produtoId}/${variacaoId}/fotos/${fotoId}`);
 }
 
 // Stripe

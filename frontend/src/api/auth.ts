@@ -5,6 +5,7 @@ interface CadastroInput {
   email: string;
   senha: string;
   nome_loja: string;
+  segmento_principal: 'alimenticio' | 'mercadoria';
   codigo_afiliado?: string;
   token_assinatura?: string;
 }

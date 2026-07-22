@@ -1,0 +1,94 @@
+import type { ChangeEvent } from 'react';
+import type { Categoria } from '../../api/types';
+import type { ProdutoInput } from '../../api/admin';
+import { Campo } from '../Campo';
+import { logoMiniatura } from '../../api/upload';
+
+interface Props {
+  form: ProdutoInput;
+  onChange: (form: ProdutoInput) => void;
+  categorias?: Categoria[];
+  enviandoFoto: boolean;
+  onSelecionarFoto: (e: ChangeEvent<HTMLInputElement>) => void;
+}
+
+// Campos do formulário de produto — usado tanto na edição/criação inline
+// (Produtos.tsx) quanto no wizard de cadastro em massa, pra não duplicar
+// essa lógica nos dois lugares.
+export function ProdutoFormFields({ form, onChange, categorias, enviandoFoto, onSelecionarFoto }: Props) {
+  return (
+    <>
+      <Campo label="Nome">
+        <input required value={form.nome} onChange={(e) => onChange({ ...form, nome: e.target.value })} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
+      </Campo>
+      <Campo label="Descrição">
+        <textarea value={form.descricao} onChange={(e) => onChange({ ...form, descricao: e.target.value })} rows={2} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
+      </Campo>
+      <div className="flex gap-3">
+        <Campo label="Preço (R$)" className="flex-1">
+          <input type="number" step="0.01" min="0.01" required value={form.preco || ''} onChange={(e) => onChange({ ...form, preco: parseFloat(e.target.value) || 0 })} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
+        </Campo>
+        <Campo label="Categoria" className="flex-1">
+          <select required value={form.categoria_id || ''} onChange={(e) => onChange({ ...form, categoria_id: Number(e.target.value) })} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento">
+            <option value="" disabled>Escolhe...</option>
+            {categorias?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </Campo>
+      </div>
+
+      <div className="flex gap-3">
+        <Campo label="Tipo de produto" className="flex-1">
+          <select
+            value={form.tipo_produto}
+            onChange={(e) => onChange({ ...form, tipo_produto: e.target.value as 'alimenticio' | 'mercadoria', peso_gramas: e.target.value === 'alimenticio' ? null : form.peso_gramas })}
+            className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+          >
+            <option value="alimenticio">Alimentício</option>
+            <option value="mercadoria">Mercadoria (roupas, artesanato...)</option>
+          </select>
+        </Campo>
+        {form.tipo_produto === 'mercadoria' && (
+          <Campo label="Peso (g)" className="flex-1">
+            <input type="number" min="1" required value={form.peso_gramas ?? ''} onChange={(e) => onChange({ ...form, peso_gramas: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Ex: 300" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
+          </Campo>
+        )}
+      </div>
+      {form.tipo_produto === 'mercadoria' && (
+        <p className="text-xs text-tinta-suave">Produtos "Mercadoria" podem ser guardados pelo cliente e entregues depois (se a loja tiver essa opção ativada em Configurações). Alimentícios nunca podem, por segurança.</p>
+      )}
+
+      {/* Upload de foto */}
+      <div>
+        <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-tinta-suave">Foto (opcional)</span>
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-tinta/25 bg-fundo">
+            {form.foto_url ? <img src={logoMiniatura(form.foto_url)} alt="Foto" className="h-full w-full object-cover" /> : <span className="font-display text-xl text-tinta/30">{form.nome.charAt(0).toUpperCase() || '?'}</span>}
+          </div>
+          <label className="cursor-pointer rounded-full border border-tinta/20 px-4 py-2 text-sm font-semibold text-tinta hover:border-acento">
+            {enviandoFoto ? 'Enviando...' : form.foto_url ? 'Trocar foto' : 'Enviar foto'}
+            <input type="file" accept="image/*" onChange={onSelecionarFoto} disabled={enviandoFoto} className="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-tinta">
+        <input type="checkbox" checked={form.disponivel} onChange={(e) => onChange({ ...form, disponivel: e.target.checked })} className="h-4 w-4 accent-acento" />
+        Disponível no cardápio
+      </label>
+
+      {/* Estoque */}
+      <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Controle de estoque <span className="normal-case font-normal">(opcional)</span></p>
+        <div className="flex gap-3">
+          <Campo label="Quantidade em estoque" className="flex-1">
+            <input type="number" min="0" value={form.estoque_atual ?? ''} onChange={(e) => onChange({ ...form, estoque_atual: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Sem limite" className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento" />
+          </Campo>
+          <Campo label="Alerta quando restar" className="flex-1">
+            <input type="number" min="0" value={form.estoque_alerta ?? ''} onChange={(e) => onChange({ ...form, estoque_alerta: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Não avisar" className="w-full rounded-lg border border-tinta/20 bg-superficie px-3 py-2 text-tinta outline-none focus:border-acento" />
+          </Campo>
+        </div>
+        <p className="text-xs text-tinta-suave">Se o produto tem variações, o estoque é gerenciado por variação, não aqui.</p>
+      </div>
+    </>
+  );
+}

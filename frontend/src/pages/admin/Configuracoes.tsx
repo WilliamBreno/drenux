@@ -32,6 +32,7 @@ export function Configuracoes() {
   const [aceitaRetirada, setAceitaRetirada] = useState(true);
   const [aceitaEntrega, setAceitaEntrega] = useState(false);
   const [aceitaGuardarEntregar, setAceitaGuardarEntregar] = useState(false);
+  const [segmentoPrincipal, setSegmentoPrincipal] = useState<'alimenticio' | 'mercadoria'>('alimenticio');
   const [taxaTipo, setTaxaTipo] = useState<'fixa' | 'combinado' | 'por_km'>('combinado');
   const [taxaValor, setTaxaValor] = useState(0);
   const [taxaBase, setTaxaBase] = useState(0);
@@ -60,6 +61,7 @@ export function Configuracoes() {
       setAceitaRetirada(loja.aceita_retirada ?? true);
       setAceitaEntrega(loja.aceita_entrega ?? false);
       setAceitaGuardarEntregar(loja.aceita_guardar_entregar ?? false);
+      setSegmentoPrincipal(loja.segmento_principal ?? 'alimenticio');
       setTaxaTipo(loja.taxa_entrega_tipo ?? 'combinado');
       setTaxaValor(loja.taxa_entrega_valor ?? 0);
       setTaxaBase(loja.taxa_entrega_base ?? 0);
@@ -95,6 +97,7 @@ export function Configuracoes() {
       aceita_retirada: aceitaRetirada,
       aceita_entrega: aceitaEntrega,
       aceita_guardar_entregar: aceitaGuardarEntregar,
+      segmento_principal: segmentoPrincipal,
       taxa_entrega_tipo: taxaTipo,
       taxa_entrega_valor: taxaValor,
       taxa_entrega_base: taxaBase,
@@ -349,6 +352,38 @@ export function Configuracoes() {
           {!aceitaRetirada && !aceitaEntrega && (
             <p className="text-xs text-acento">Ative pelo menos um modo de recebimento.</p>
           )}
+        </div>
+
+        {/* Segmento principal */}
+        <div className="space-y-3 rounded-xl border border-tinta/10 bg-fundo p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">O que sua loja vende principalmente?</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSegmentoPrincipal('alimenticio')}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                segmentoPrincipal === 'alimenticio'
+                  ? 'border-acento bg-acento/10 text-acento'
+                  : 'border-tinta/20 text-tinta-suave hover:border-tinta/40'
+              }`}
+            >
+              Comida e bebida
+            </button>
+            <button
+              type="button"
+              onClick={() => setSegmentoPrincipal('mercadoria')}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                segmentoPrincipal === 'mercadoria'
+                  ? 'border-acento bg-acento/10 text-acento'
+                  : 'border-tinta/20 text-tinta-suave hover:border-tinta/40'
+              }`}
+            >
+              Outros produtos
+            </button>
+          </div>
+          <p className="text-xs text-tinta-suave">
+            Define o tipo padrão dos novos produtos que você cadastrar.
+          </p>
         </div>
 
         {/* Guardar e entregar depois */}
