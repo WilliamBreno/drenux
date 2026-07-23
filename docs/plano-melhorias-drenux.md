@@ -31,16 +31,17 @@ pagamento integrado. Atende dois perfis de loja: **alimentício** (comida/bebida
 (produtos não perecíveis, ex: roupas, artesanato). Monetização por assinatura (planos Start/Pro/Scale,
 ver `MeuPlano.tsx`) combinada com a taxa por pedido, que varia por plano.
 
-**Processador de pagamento em migração: Stripe Connect → Asaas.** Ainda nenhuma empresa real está
-cadastrada em produção, então a troca está sendo feita antes do lançamento real — motivo principal é o
-Pix (na Stripe, hoje só disponível por convite pra empresas brasileiras) e taxas menores. Decisão já
-fechada: taxa do Start passa a 6,5% + piso de R$2,50/pedido (Drenux absorve a taxa do Asaas, afiliado
-recebe 30% do lucro líquido); Pro (R$129/mês+4%) e Scale (R$349/mês+1,5%) mantêm os mesmos números,
-só que agora é a loja quem absorve a taxa do Asaas (como já absorvia a do Stripe), afiliado continua
-com ~37,6% da comissão bruta. Ou seja: troca o processador por trás, a lógica de quem paga a taxa em
-cada plano não muda. Enquanto esse trabalho não estiver concluído, qualquer código novo que mexer com
-onboarding/repasse de pagamento deve considerar que a integração-alvo é a API do Asaas, não a Stripe
-Connect — confirme com o William antes de escrever código específico de Stripe Connect nessa área.
+**Processador de pagamento em migração: Stripe Connect → Mercado Pago (decisão final, fechada em
+23/07/2026, depois de avaliar Mercado Pago contra Asaas).** Ainda nenhuma empresa real está
+cadastrada em produção, então a troca está sendo feita antes do lançamento real — motivo principal é
+o Pix (na Stripe, hoje só disponível por convite pra empresas brasileiras), e no Mercado Pago
+especificamente: sem teto de quantidade de contas vinculadas (diferente da Asaas, que tem limite de
+10 subcontas até homologação regulatória) e Pix cobrado em percentual (0,99%), o que favorece o
+ticket baixo típico do segmento alimentício. Fórmula de comissão mantida como já decidido: Start
+`max(pedido × 6,5%, R$2,50)` com a Drenux absorvendo a taxa do processador; Pro (R$129/mês+4%) e
+Scale (R$349/mês+1,5%) mantêm os mesmos números, com a loja absorvendo a taxa do processador — só
+troca o processador por trás, a lógica de quem paga a taxa em cada plano não muda. Ver a
+especificação completa da migração na Fase 5, mais abaixo.
 
 Stack: backend Go (Gin/GORM/PostgreSQL) em `backend/`, frontend React 19 + TypeScript + Vite +
 Tailwind v3 + TanStack Query + Zustand em `frontend/`.
@@ -57,13 +58,12 @@ Tailwind v3 + TanStack Query + Zustand em `frontend/`.
 ## Fases
 
 ### Fase 1 — Tipo de loja (`SegmentoPrincipal`)
-Status: `[x] concluída` — revisão em 23/07/2026 confirmou que backend e frontend já tinham a fase
-inteira implementada (commit `0c52bca`, 22/07 15:45), incluindo o rótulo amigável pedido pelo
-William ("O que sua loja vende principalmente?" / "Comida e bebida" / "Outros produtos") e o fix do
-`CodigoAfiliado`/`TokenAssinatura` no cadastro. `go build ./...` e `tsc -b` passaram sem erros. Se o
-seletor não apareceu no teste de produção de 22/07, o motivo provável é deploy desatualizado
-(o commit é do mesmo dia, possivelmente depois do teste) — vale conferir se o ambiente de produção
-está rodando esse commit antes de investigar mais código.
+Status: `[ ] pendente` — **atenção**: um patch com essa fase foi gerado numa sessão de chat anterior
+e pode ter sido parcialmente aplicado (o campo `SegmentoPrincipal` já apareceu em `domain/loja.go`
+num teste anterior), mas o William testou em produção em 22/07/2026 e **o seletor não aparece na
+tela de Cadastro** — trate como incompleta de verdade. Antes de escrever código novo, revise o
+estado atual de cada arquivo listado abaixo (backend e frontend) pra saber exatamente o que já
+existe e o que falta, em vez de assumir que nada foi feito ou que tudo foi feito.
 
 **Pedido novo do William (22/07/2026):** o rótulo dessa escolha pro lojista precisa de um nome
 melhor que "alimentício"/"mercadoria" cru na tela — esses continuam sendo os valores internos do
@@ -76,9 +76,9 @@ com ele antes de fixar o texto final.
 Objetivo: cada loja declara se vende principalmente produtos **alimentícios** ou **mercadoria**
 (reaproveitando o enum `TipoProduto` que já existe em `domain.Produto` — não criar um vocabulário
 novo). Isso: (1) define o tipo padrão de produtos novos, (2) mais pra frente vai alimentar a categoria
-de negócio sugerida no onboarding da loja no processador de pagamento (hoje em migração de Stripe
-Connect pra Asaas — ver seção "Contexto do produto" acima; não amarrar essa lógica a campos
-específicos da API da Stripe), (3) decide qual fluxo de catálogo mostrar nas Fases 2/3.
+de negócio sugerida no onboarding da loja no processador de pagamento (Mercado Pago, ver Fase 5 e a
+seção "Contexto do produto" acima; não amarrar essa lógica a campos específicos da API da Stripe),
+(3) decide qual fluxo de catálogo mostrar nas Fases 2/3.
 
 **Backend:**
 - `domain/loja.go` — campo novo `SegmentoPrincipal TipoProduto` (gorm `default:'alimenticio'`,
@@ -110,21 +110,7 @@ Se existir uma pasta literal `frontend/@/lib/utils.ts`, é o `lib/utils.ts` do s
 os dois já apontam pra `src/`). Mover pro lugar certo com `git mv` e apagar a pasta `@` vazia.
 
 ### Fase 2 — Variações de produto (só segmento alimentício)
-Status: `[x] concluída` — revisão em 23/07/2026 confirmou que o toggle `MostrarValorAdicional` já
-estava implementado ponta a ponta (domain, handler, service, `VariacaoFormFields.tsx`,
-`ProdutoCard.tsx`). `go build ./...` e `tsc -b` passam sem erros.
-
-**Atenção pro William antes da Fase 3** — achado importante durante a revisão: o sistema de
-variação atual **já foi além do descrito nesta fase** numa sessão anterior e hoje tem um campo
-`ModoPreco` (`aditivo`/`absoluto`) + fotos por variação, e o modo `absoluto` já está sendo usado
-**pra mercadoria** (`VariacaoFormFields`, `CadastroEmMassaDialog.tsx` já existe e usa variação com
-`modo_preco: 'absoluto'` como cadastro em massa pra mercadoria). Isso conflita com a decisão de
-23/07 registrada na Fase 3 abaixo, que diz que variação é exclusiva de alimentício e que mercadoria
-deve usar Subcategoria→Grupo de Cor, **não** reaproveitar a estrutura de variação. Nenhum código de
-Subcategoria/Grupo de Cor existe ainda no domain. Antes de implementar a Fase 3 como está descrita,
-confirmar com o William se: (a) descarta/adapta o `CadastroEmMassaDialog.tsx` e o modo `absoluto`
-existentes em favor da hierarquia Categoria→Subcategoria→Grupo de Cor documentada, ou (b) a
-decisão de 23/07 deve ser revista pra incorporar o que já foi construído.
+Status: `[ ] pendente`
 
 **Importante, decisão do William em 23/07/2026**: variação (`domain.VariacaoProduto`, aditiva sobre o
 preço base) é um recurso de **cardápio**, não de catálogo de varejo. Essa fase se aplica **só** a
@@ -138,47 +124,7 @@ adicional**: campo novo (ex: `MostrarValorAdicional bool`) pra decidir se o pre�
 aparece pro cliente no cardápio público ou fica escondido.
 
 ### Fase 3 — Catálogo de varejo (só segmento "mercadoria"/outros produtos)
-Status: `[x] concluída` — implementada em 23/07/2026 seguindo o plano documentado (decisão do William:
-manter a hierarquia Subcategoria/Grupo de Cor como escrita aqui, e resolver separadamente o que
-fazer com o `modo_preco: 'absoluto'` + `CadastroEmMassaDialog.tsx` que já existiam de uma sessão
-anterior — ver nota na Fase 2 acima). `go build ./...`, `tsc -b` e `npm run build` passam sem erros.
-
-**O que mudou:**
-- **Backend**: novos modelos `domain.Subcategoria` (`categoria_id` + `nome` únicos) e
-  `domain.GrupoCor` (`subcategoria_id` + `nome` únicos), com repository/service/handler próprios
-  (`subcategoria_repository.go`, `grupo_cor_repository.go`, `subcategoria_service.go`,
-  `grupo_cor_service.go`, `subcategoria_handler.go`, `grupo_cor_handler.go`). `domain.Produto` ganhou
-  `SubcategoriaID`/`GrupoCorID` opcionais, validados em cadeia (`produto_service.go`,
-  `validarSubcategoriaEGrupo`) — grupo de cor só é aceito se pertencer à subcategoria informada, e
-  a subcategoria só é aceita se pertencer à categoria do produto. Rotas novas em `main.go`:
-  `GET/POST /admin/categorias/:categoriaId/subcategorias`, `PUT/DELETE /admin/subcategorias/:id`,
-  `GET/POST /admin/subcategorias/:subcategoriaId/grupos-cor`, `PUT/DELETE /admin/grupos-cor/:id`
-  (mais `GET /admin/subcategorias` e `GET /admin/grupos-cor` pra buscar a hierarquia inteira da loja
-  de uma vez). O catálogo público (`catalogo_service.go`/`catalogo_handler.go`) agora expõe
-  `segmento_principal`, `subcategorias` e `grupos_cor` também.
-- **Frontend (3.1 — hierarquia)**: `Categorias.tsx` ganhou gerenciamento de Subcategoria/Grupo de Cor
-  por categoria (só quando `loja.segmento_principal === 'mercadoria'`), via novo componente
-  `components/admin/HierarquiaCategoria.tsx`. `ProdutoFormFields.tsx` ganhou os selects opcionais de
-  Subcategoria/Grupo de Cor (encadeados: trocar categoria limpa a subcategoria escolhida).
-- **Frontend (3.2 — cadastro em massa)**: o botão "Cadastro em massa" em `Produtos.tsx` agora só
-  aparece pra lojas `mercadoria` (antes aparecia sempre); `CadastroEmMassaDialog.tsx` passou a
-  receber e repassar `subcategorias`/`gruposCor` pro formulário.
-- **Frontend (3.3 — exibição organizada)**: `Produtos.tsx` foi reestruturado — o card de produto
-  virou uma função reaproveitável (`renderProduto`) usada tanto na lista plana (alimentício, sem
-  mudança visual) quanto numa lista agrupada por Categoria → Subcategoria → Grupo de Cor
-  (`renderProdutosDaCategoria`, só pra mercadoria).
-- **Frontend (3.4 — catálogo público e-commerce)**: novo `components/CatalogoGrid.tsx` (navegação em
-  chips Categoria → Subcategoria → Grupo de Cor + grid de produtos) e `components/ProdutoCardGrid.tsx`
-  (card vertical). `CardapioPublico.tsx` escolhe entre esse layout novo e o layout de lista original
-  (`AbasCategorias` + `ProdutoCard`) com base em `data.loja.segmento_principal` — lojas alimentício
-  não têm nenhuma mudança visual.
-
-**Ainda em aberto, sem decisão automática**: o `modo_preco: 'absoluto'` de `VariacaoProduto` (preço e
-fotos por variação) continua existindo e sendo sugerido como padrão pra mercadoria em
-`abrirNovaVariacao`/`variacaoVazia` — ele não foi removido nem unificado com a hierarquia
-Subcategoria/Grupo de Cor nova. As duas ferramentas coexistem por enquanto (variação = opção dentro
-de um produto; Subcategoria/Grupo de Cor = organização entre produtos diferentes). Se isso gerar
-confusão de UX na prática, revisar com o William antes de mexer.
+Status: `[ ] pendente`
 
 **Reescrita em 23/07/2026** a partir de feedback do William — essa fase deixou de ser só "cadastro em
 massa" e virou uma reestruturação de como o catálogo funciona pra lojas de varejo (roupa, sapato,
@@ -217,11 +163,7 @@ aparecem/não fazem sentido pra loja alimentício):
   mantém o layout atual, sem mudança.
 
 ### Fase 4 — Meu Plano: alerta proativo
-Status: `[x] concluída` — revisão em 23/07/2026 confirmou que já estava implementada no mesmo commit
-`0c52bca` (22/07) das Fases 1/2. A lógica de custo/plano mais barato foi extraída de `MeuPlano.tsx`
-pra `lib/planos.ts` (`PLANOS`, `custoPlano`, `planoMaisBarato`) exatamente pra ser reaproveitada sem
-duplicar números — `pages/admin/Inicio.tsx` já mostra o alerta proativo (linha 48-58) linkando pra
-`/admin/meu-plano`, calculado com `dashboard.total_mes`. `tsc -b` e `npm run build` já validados.
+Status: `[ ] pendente`
 
 O essencial de "Meu Plano" **já existe** em `pages/admin/MeuPlano.tsx`: planos Start/Pro/Scale reais,
 troca de plano funcionando (com downgrade agendado pra renovação + cancelamento), e uma recomendação
@@ -232,13 +174,72 @@ expor um alerta proativo em `pages/admin/Inicio.tsx` (ou `Dashboard.tsx`) reapro
 de cálculo que já existe em `MeuPlano.tsx`, avisando quando o faturamento do mês ultrapassa o ponto de
 equilíbrio pra outro plano.
 
-## Depois das 4 fases: decisão da plataforma de pagamento
+### Fase 5 — Integração real com o Mercado Pago (decisão fechada em 23/07/2026)
+Status: `[ ] pendente`
 
-O William definiu explicitamente que a escolha final entre **Asaas** e **Mercado Pago** (ver seção
-"Contexto do produto" acima) só será fechada **depois** das Fases 1 a 4 estarem prontas — não
-adianta o Claude Code tentar antecipar isso ou começar a integração de nenhum dos dois processadores
-sem confirmação explícita do William. Quando a decisão sair, uma nova fase (Fase 5) será adicionada
-aqui com a especificação da integração real.
+**Decisão fechada**: Mercado Pago, não Asaas. Motivo resumido (contexto completo na seção
+"Contexto do produto" acima e no histórico de decisões): sem teto de quantidade de contas
+vinculadas (cada Loja usa a própria conta Mercado Pago via OAuth, não uma subconta criada pela
+Drenux), Pix cobrado em percentual (0,99%) o que favorece o ticket baixo típico do segmento
+alimentício, e Split 1:1 já validado tecnicamente em Sandbox (preferência e pagamento aceitos com
+`marketplace_fee`/`application_fee`, apontando o `collector_id` certo pro vendedor).
+
+**Suposição de trabalho, confirmar com o William antes de apagar código**: como nenhuma loja real
+está em produção ainda, a integração da Stripe deve ser **substituída por completo** pelo Mercado
+Pago (não manter os dois rodando em paralelo) — mas não apagar o código da Stripe do histórico do
+git, só parar de chamá-lo ativamente. Se o William quiser manter a Stripe como opção secundária por
+algum motivo, avisar antes de remover qualquer rota/handler dela.
+
+**5.1 — Backend: conexão da Loja com o Mercado Pago (equivalente ao onboarding Stripe)**
+- Novo campo em `domain.Loja`: dados da autorização OAuth — `MercadoPagoAccessToken`,
+  `MercadoPagoRefreshToken`, `MercadoPagoUserID` (o `collector_id`), `MercadoPagoTokenExpiraEm`
+  (data, pra saber quando precisa renovar — token válido por 6 meses).
+- Novo handler `mercadopago_handler.go`, espelhando o padrão de `stripe_handler.go`:
+  - `GET /admin/mercadopago/onboarding` — monta a URL de autorização OAuth
+    (`https://auth.mercadopago.com.br/authorization?client_id=...&response_type=code&platform_id=mp&redirect_uri=...`)
+    e redireciona a loja pra lá.
+  - `GET /admin/mercadopago/callback` — recebe o `code` de volta, troca pelo `access_token` via
+    `POST https://api.mercadopago.com/oauth/token`, salva os dados na `Loja`.
+  - `GET /admin/mercadopago/status` — equivalente ao `/admin/stripe/status` já existente.
+- Novo `mercadopago_service.go` com essa lógica de troca de token e chamadas à API.
+- **Variáveis de ambiente novas**: `MERCADOPAGO_CLIENT_ID`, `MERCADOPAGO_CLIENT_SECRET` (da
+  aplicação "drenux-marketplace" — usar as de produção quando for a hora, não as de teste que já
+  usamos nessa conversa).
+
+**5.2 — Backend: checkout e split**
+- Trocar a criação de cobrança que hoje usa a Stripe (`/pedidos/:id/checkout`) pra usar a API do
+  Mercado Pago, com `application_fee` calculado pela mesma fórmula de plano que já existe (Start:
+  `max(pedido × 6,5%, R$2,50)`; Pro/Scale: percentuais já definidos) — só troca o processador por
+  trás, a lógica de cálculo de comissão não muda.
+- Usar o `access_token` da própria Loja (salvo em 5.1) pra criar o pagamento, não o token da
+  plataforma.
+
+**5.3 — Backend: webhook**
+- Novo endpoint `POST /webhooks/mercadopago`, substituindo/complementando `/webhooks/stripe`.
+- Validar a assinatura do webhook (o Mercado Pago manda uma assinatura no header — verificar antes
+  de processar qualquer evento, mesmo padrão de segurança que já fizemos com o `whsec_` da Stripe).
+- Escutar pelo menos o evento de pagamento aprovado, pra disparar o mesmo fluxo que já existe hoje
+  (desconto de estoque, notificação WhatsApp, incremento de uso de cupom).
+
+**5.4 — Renovação automática do token (a cada 6 meses)**
+- Como o `access_token` de cada loja expira em 6 meses, criar uma rotina (cron ou verificação no
+  login do admin) que renova via `refresh_token` **antes** de expirar — evitar que uma loja perca a
+  capacidade de receber pagamento silenciosamente por token vencido.
+
+**5.5 — Em aberto, precisa de pesquisa antes de implementar: repasse de comissão do afiliado**
+Hoje o repasse do afiliado usa `Stripe Transfer` (a plataforma recebe o valor cheio via
+`application_fee`, depois transfere uma parte pra conta Stripe Connect do afiliado, separado do
+pedido original). **Não confirmamos ainda o equivalente disso no Mercado Pago** — não presumir que
+existe uma função pronta de "enviar dinheiro pra terceiro" até verificar na documentação oficial.
+Duas hipóteses a investigar, nessa ordem:
+1. Afiliado também vira "vendedor" com conta MP própria vinculada via OAuth, e a divisão de 3 partes
+   (Loja + Drenux + Afiliado) acontece na mesma transação — isso exigiria o modelo **1:N** do
+   Mercado Pago, que precisa de contato comercial pra habilitar (diferente do 1:1, que é self-service).
+2. A Drenux recebe o valor cheio da comissão (1:1 normal com a Loja) e faz um repasse **separado**
+   pro afiliado por fora (Pix manual/agendado), sem usar split nenhum pra essa parte — mais parecido
+   com o padrão atual da Stripe.
+Confirmar com o William qual caminho seguir antes de escrever qualquer código de repasse de
+afiliado — essa parte não deve ser implementada só com suposição.
 
 ## Backlog mais antigo, fora de escopo por enquanto (não iniciar sem o William pedir)
 
