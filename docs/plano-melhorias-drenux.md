@@ -57,16 +57,21 @@ Tailwind v3 + TanStack Query + Zustand em `frontend/`.
 ## Fases
 
 ### Fase 1 — Tipo de loja (`SegmentoPrincipal`)
-Status: `[x] concluída` (23/07/2026) — código já existia pronto no working tree local (não
-commitado), por isso não aparecia em produção no teste do William em 22/07/2026. Revisado arquivo a
-arquivo em 23/07/2026: todos os itens do backend e do frontend listados abaixo já estavam
-implementados corretamente, incluindo o bug do `CodigoAfiliado`/`TokenAssinatura` não repassado.
-Validado com `go build ./...`, `go vet ./...` e `npx tsc -b` — sem erros. **Falta só o William
-commitar/dar push pra ir pro ar** (commits são responsabilidade dele, não do Claude Code).
+Status: `[x] concluída` — revisão em 23/07/2026 confirmou que backend e frontend já tinham a fase
+inteira implementada (commit `0c52bca`, 22/07 15:45), incluindo o rótulo amigável pedido pelo
+William ("O que sua loja vende principalmente?" / "Comida e bebida" / "Outros produtos") e o fix do
+`CodigoAfiliado`/`TokenAssinatura` no cadastro. `go build ./...` e `tsc -b` passaram sem erros. Se o
+seletor não apareceu no teste de produção de 22/07, o motivo provável é deploy desatualizado
+(o commit é do mesmo dia, possivelmente depois do teste) — vale conferir se o ambiente de produção
+está rodando esse commit antes de investigar mais código.
 
-**Rótulo pro lojista (confirmado com o William em 23/07/2026):** "O que sua loja vende
-principalmente?" com botões "Comida e bebida" / "Outros produtos" — ajustado em `Cadastro.tsx` e
-`Configuracoes.tsx` (estava "Mercadoria" antes da confirmação).
+**Pedido novo do William (22/07/2026):** o rótulo dessa escolha pro lojista precisa de um nome
+melhor que "alimentício"/"mercadoria" cru na tela — esses continuam sendo os valores internos do
+enum (não mudar o `oneof=alimenticio mercadoria` no backend), só o texto exibido na interface
+(pergunta + rótulo dos botões) deve ficar mais claro pro lojista leigo entender na hora do
+cadastro. Sugestão a validar com o William antes de implementar (não travar nisso sozinho): algo
+como "O que sua loja vende?" com opções "Comida e bebida" vs. "Outros produtos" — mas confirmar
+com ele antes de fixar o texto final.
 
 Objetivo: cada loja declara se vende principalmente produtos **alimentícios** ou **mercadoria**
 (reaproveitando o enum `TipoProduto` que já existe em `domain.Produto` — não criar um vocabulário
@@ -104,118 +109,128 @@ Se existir uma pasta literal `frontend/@/lib/utils.ts`, é o `lib/utils.ts` do s
 (deveria ser `frontend/src/lib/utils.ts` — confere o alias `@` em `vite.config.ts` e `tsconfig.app.json`,
 os dois já apontam pra `src/`). Mover pro lugar certo com `git mv` e apagar a pasta `@` vazia.
 
-### Fase 2 — Variações de produto
-Status: `[x] concluída` (23/07/2026) — implementado do zero (não havia trabalho prévio no working
-tree, diferente da Fase 1). Validado com `go build ./...`, `go vet ./...` e `npx tsc -b` — sem
-erros. Falta o William commitar/dar push.
+### Fase 2 — Variações de produto (só segmento alimentício)
+Status: `[x] concluída` — revisão em 23/07/2026 confirmou que o toggle `MostrarValorAdicional` já
+estava implementado ponta a ponta (domain, handler, service, `VariacaoFormFields.tsx`,
+`ProdutoCard.tsx`). `go build ./...` e `tsc -b` passam sem erros.
 
-**O que foi feito:**
-- `domain.VariacaoProduto` ganhou `MostrarValorAdicional bool` (default true, preserva
-  comportamento atual) e `ModoPreco` (`aditivo` default | `absoluto`, tipo novo
-  `ModoPrecoVariacao`, mesmo padrão de enum do `TipoProduto`).
-- Tabela nova `FotoVariacao` (`domain/foto_variacao.go`), migrada via `AutoMigrate`, com
-  repositório (`foto_variacao_repository.go`), handler (`FotoVariacaoHandler` em
-  `variacao_handler.go`, valida a cadeia loja→produto→variação) e rotas
-  `POST/DELETE /admin/variacoes/:produtoId/:variacaoId/fotos(/:fotoId)`.
-- `produto_repository.go` e `variacao_repository.go` agora fazem preload de `Variacoes.Fotos`.
-- `pedido_service.go`: cálculo de preço do item corrigido — no modo `absoluto`,
-  `precoUnit = variacao.PrecoAdicional` (não soma mais ao preço base); no `aditivo` continua como
-  antes. Esse é o ponto que efetivamente cobra o cliente — os cálculos no frontend são só exibição.
-- Frontend: `types.ts`/`admin.ts` com os campos novos e funções `adicionarFotoVariacao`/
-  `deletarFotoVariacao`; helper `precoItem()` novo em `lib/utils.ts` centraliza a regra
-  aditivo/absoluto, usado em `ProdutoCard.tsx`, `cartStore.ts` e `CarrinhoDrawer.tsx` (antes cada
-  um recalculava na mão). `ProdutoCard.tsx` também troca a galeria de fotos pra da variação
-  selecionada quando ela tiver fotos próprias.
-- `pages/admin/Produtos.tsx`: formulário de variação ganhou seletor de modo de preço (com padrão
-  sugerido pelo `segmento_principal` da loja — mercadoria abre em "absoluto"), toggle de
-  visibilidade do valor, e upload de fotos da variação (só aparece editando uma variação existente
-  em modo absoluto, mesmo padrão de fluxo das fotos de produto).
+**Atenção pro William antes da Fase 3** — achado importante durante a revisão: o sistema de
+variação atual **já foi além do descrito nesta fase** numa sessão anterior e hoje tem um campo
+`ModoPreco` (`aditivo`/`absoluto`) + fotos por variação, e o modo `absoluto` já está sendo usado
+**pra mercadoria** (`VariacaoFormFields`, `CadastroEmMassaDialog.tsx` já existe e usa variação com
+`modo_preco: 'absoluto'` como cadastro em massa pra mercadoria). Isso conflita com a decisão de
+23/07 registrada na Fase 3 abaixo, que diz que variação é exclusiva de alimentício e que mercadoria
+deve usar Subcategoria→Grupo de Cor, **não** reaproveitar a estrutura de variação. Nenhum código de
+Subcategoria/Grupo de Cor existe ainda no domain. Antes de implementar a Fase 3 como está descrita,
+confirmar com o William se: (a) descarta/adapta o `CadastroEmMassaDialog.tsx` e o modo `absoluto`
+existentes em favor da hierarquia Categoria→Subcategoria→Grupo de Cor documentada, ou (b) a
+decisão de 23/07 deve ser revista pra incorporar o que já foi construído.
 
-Objetivo: dois ajustes no sistema de variações (`domain.VariacaoProduto`), que hoje só tem
-`PrecoAdicional` (valor somado ao preço base) e nenhuma foto própria:
+**Importante, decisão do William em 23/07/2026**: variação (`domain.VariacaoProduto`, aditiva sobre o
+preço base) é um recurso de **cardápio**, não de catálogo de varejo. Essa fase se aplica **só** a
+lojas com `SegmentoPrincipal = alimenticio`. Lojas `mercadoria` **não têm essa opção** — pra elas,
+o mecanismo próprio é a Fase 3 (Subcategoria + Grupo de Cor), não variação. Não confundir os dois
+nem tentar reaproveitar a mesma estrutura de dados entre os dois segmentos.
 
-1. **Toggle de visibilidade do valor adicional** — campo novo (ex: `MostrarValorAdicional bool`) pra
-   decidir se o preço extra da variação aparece pro cliente no cardápio público ou fica escondido.
-2. **Modo de variação com preço/foto próprios** — pensado pro segmento "mercadoria" (ex: um tênis
-   branco Nike com 3 modelos diferentes, cada um com preço absoluto e fotos próprias, em vez de um
-   acréscimo sobre o preço base). Precisa de: campo indicando se a variação é aditiva ou de preço
-   absoluto, e uma tabela `FotoVariacao` nova (hoje `FotoProduto` só se relaciona com `Produto`).
+Objetivo, restrito a alimentício: um único ajuste no sistema de variações que hoje só tem
+`PrecoAdicional` (valor somado ao preço base) — adicionar um **toggle de visibilidade do valor
+adicional**: campo novo (ex: `MostrarValorAdicional bool`) pra decidir se o preço extra da variação
+aparece pro cliente no cardápio público ou fica escondido.
 
-O modo disponível (aditivo vs. absoluto+foto) deve ser sugerido conforme o `SegmentoPrincipal` da loja
-(Fase 1) — alimentício vê o modo aditivo por padrão, mercadoria vê o modo de preço/foto próprios.
+### Fase 3 — Catálogo de varejo (só segmento "mercadoria"/outros produtos)
+Status: `[x] concluída` — implementada em 23/07/2026 seguindo o plano documentado (decisão do William:
+manter a hierarquia Subcategoria/Grupo de Cor como escrita aqui, e resolver separadamente o que
+fazer com o `modo_preco: 'absoluto'` + `CadastroEmMassaDialog.tsx` que já existiam de uma sessão
+anterior — ver nota na Fase 2 acima). `go build ./...`, `tsc -b` e `npm run build` passam sem erros.
 
-### Fase 3 — Cadastro de catálogo em massa
-Status: `[x] concluída` (23/07/2026) — implementado como modal multi-step (opção escolhida pelo
-William entre duas propostas), testado de ponta a ponta num ambiente local real (Postgres via
-Docker + backend Go + frontend Vite, loja de teste criada pelo fluxo de cadastro de verdade) usando
-Playwright, não só `tsc -b`. Falta o William commitar/dar push.
+**O que mudou:**
+- **Backend**: novos modelos `domain.Subcategoria` (`categoria_id` + `nome` únicos) e
+  `domain.GrupoCor` (`subcategoria_id` + `nome` únicos), com repository/service/handler próprios
+  (`subcategoria_repository.go`, `grupo_cor_repository.go`, `subcategoria_service.go`,
+  `grupo_cor_service.go`, `subcategoria_handler.go`, `grupo_cor_handler.go`). `domain.Produto` ganhou
+  `SubcategoriaID`/`GrupoCorID` opcionais, validados em cadeia (`produto_service.go`,
+  `validarSubcategoriaEGrupo`) — grupo de cor só é aceito se pertencer à subcategoria informada, e
+  a subcategoria só é aceita se pertencer à categoria do produto. Rotas novas em `main.go`:
+  `GET/POST /admin/categorias/:categoriaId/subcategorias`, `PUT/DELETE /admin/subcategorias/:id`,
+  `GET/POST /admin/subcategorias/:subcategoriaId/grupos-cor`, `PUT/DELETE /admin/grupos-cor/:id`
+  (mais `GET /admin/subcategorias` e `GET /admin/grupos-cor` pra buscar a hierarquia inteira da loja
+  de uma vez). O catálogo público (`catalogo_service.go`/`catalogo_handler.go`) agora expõe
+  `segmento_principal`, `subcategorias` e `grupos_cor` também.
+- **Frontend (3.1 — hierarquia)**: `Categorias.tsx` ganhou gerenciamento de Subcategoria/Grupo de Cor
+  por categoria (só quando `loja.segmento_principal === 'mercadoria'`), via novo componente
+  `components/admin/HierarquiaCategoria.tsx`. `ProdutoFormFields.tsx` ganhou os selects opcionais de
+  Subcategoria/Grupo de Cor (encadeados: trocar categoria limpa a subcategoria escolhida).
+- **Frontend (3.2 — cadastro em massa)**: o botão "Cadastro em massa" em `Produtos.tsx` agora só
+  aparece pra lojas `mercadoria` (antes aparecia sempre); `CadastroEmMassaDialog.tsx` passou a
+  receber e repassar `subcategorias`/`gruposCor` pro formulário.
+- **Frontend (3.3 — exibição organizada)**: `Produtos.tsx` foi reestruturado — o card de produto
+  virou uma função reaproveitável (`renderProduto`) usada tanto na lista plana (alimentício, sem
+  mudança visual) quanto numa lista agrupada por Categoria → Subcategoria → Grupo de Cor
+  (`renderProdutosDaCategoria`, só pra mercadoria).
+- **Frontend (3.4 — catálogo público e-commerce)**: novo `components/CatalogoGrid.tsx` (navegação em
+  chips Categoria → Subcategoria → Grupo de Cor + grid de produtos) e `components/ProdutoCardGrid.tsx`
+  (card vertical). `CardapioPublico.tsx` escolhe entre esse layout novo e o layout de lista original
+  (`AbasCategorias` + `ProdutoCard`) com base em `data.loja.segmento_principal` — lojas alimentício
+  não têm nenhuma mudança visual.
 
-**Achado importante durante o teste (fora do escopo da fase, corrigido por bloquear tudo):** o
-`npm run build`/`npm run dev` estavam **completamente quebrados** antes desta sessão — `frontend/src/index.css`
-usa sintaxe do Tailwind v4 (`@theme inline`, `@apply border-border`, `@import "shadcn/tailwind.css"`
-com `@utility`/`--spacing()`), mas o projeto está no Tailwind v3.4.19, que não entende nada disso.
-Isso não é coisa nova da Fase 3 — já quebrava `MeuPlano.tsx` e `Planos.tsx`, que também usam esses
-tokens (`bg-muted`, `ring-primary` etc.). Corrigido com um mapeamento padrão desses tokens semânticos
-pra `tailwind.config.js` (usando `oklch(from var(--x) l c h / <alpha-value>)` pra manter suporte a
-modificador de opacidade tipo `ring-ring/50`), sem tocar nas variáveis de tema em `index.css`.
+**Ainda em aberto, sem decisão automática**: o `modo_preco: 'absoluto'` de `VariacaoProduto` (preço e
+fotos por variação) continua existindo e sendo sugerido como padrão pra mercadoria em
+`abrirNovaVariacao`/`variacaoVazia` — ele não foi removido nem unificado com a hierarquia
+Subcategoria/Grupo de Cor nova. As duas ferramentas coexistem por enquanto (variação = opção dentro
+de um produto; Subcategoria/Grupo de Cor = organização entre produtos diferentes). Se isso gerar
+confusão de UX na prática, revisar com o William antes de mexer.
 
-**Correção 23/07/2026 (Fase 4): o `npm run build` ainda estava quebrado depois disso** — só tinha
-sido testado com `npm run dev`, que não roda a etapa de minificação. `components/ui/card.tsx`,
-`accordion.tsx` e `shimmer-button.tsx` usavam mais sintaxe exclusiva do Tailwind v4
-(`gap-(--card-spacing)`, `[--card-spacing:--spacing(4)]`, `h-(--accordion-panel-height)`,
-`inset-(--cut)`) que quebrava a minificação (`lightningcss`) mesmo com o Tailwind/PostCSS passando.
-Reescrito pra sintaxe v3 equivalente (`gap-[var(--card-spacing)]`, `[--card-spacing:1rem]` etc.),
-sem mudar nada visualmente — `Card` só é usado em `MeuPlano.tsx`/`Planos.tsx` e nenhum lugar usa a
-prop `size="sm"`, então simplificar pra valor fixo foi seguro. **Agora `npm run build` passa de
-verdade** (só restam avisos inofensivos de "unknown at-rule" pros blocos `scroll-fade`/`shimmer-*`
-ainda não usados no app, que não geram erro). Antes dessa correção, **o deploy de produção mais
-recente (se feito depois do commit "Implementação do Meu Plano") provavelmente falhou ou está
-servindo build antigo** — vale conferir o histórico de deploys no Vercel.
+**Reescrita em 23/07/2026** a partir de feedback do William — essa fase deixou de ser só "cadastro em
+massa" e virou uma reestruturação de como o catálogo funciona pra lojas de varejo (roupa, sapato,
+produtos do gênero). São quatro partes, todas exclusivas de `SegmentoPrincipal = mercadoria` (não
+aparecem/não fazem sentido pra loja alimentício):
 
-**O que foi feito:**
-- `frontend/src/components/ui/dialog.tsx` — componente Dialog do shadcn (faltava; puxado via CLI,
-  que de novo gerou a pasta `@/` errada por causa do mesmo bug de alias da Fase 1 — movido na mão
-  pro lugar certo, pasta `@/` removida de novo).
-- `frontend/src/components/admin/ProdutoFormFields.tsx` e `VariacaoFormFields.tsx` — campos dos
-  formulários de produto e variação extraídos dos dois lugares que já existiam (form inline de
-  criar/editar produto, form inline de variação em `Produtos.tsx`) pra um componente compartilhado,
-  já que agora são usados também pelo wizard — evita duplicar a mesma lógica em três lugares.
-- `frontend/src/components/admin/CadastroEmMassaDialog.tsx` — o wizard: etapa 1 (dados do produto,
-  igual ao form existente) → etapa 2 (variações do produto recém-criado, opcional, com upload de
-  foto por variação no modo absoluto) → "+ Adicionar outro produto" (volta pra etapa 1 com formulário
-  limpo, contador incrementa) ou "Concluir" (fecha).
-- `pages/admin/Produtos.tsx` — botão "Cadastro em massa" ao lado de "+ Novo produto"; refatorado pra
-  usar os dois componentes de formulário extraídos (comportamento idêntico ao anterior).
-- Backend: nenhuma rota nova — o wizard reusa `POST /admin/produtos`, `POST /admin/variacoes/:produtoId`
-  e as rotas de foto de variação da Fase 2.
+**3.1 — Hierarquia Categoria → Subcategoria → Grupo de Cor**
+- Uma `Categoria` existente (ex: "Tênis") ganha **Subcategorias opcionais**, pensadas pra representar
+  tamanho (ex: "40", "41", "42").
+- Dentro de uma Subcategoria, opcionalmente também um **Grupo de Cor** (ex: "Tons escuros", "Branco").
+- Leitura confirmada com o William: isso é um drill-down (Categoria → Subcategoria → Grupo de Cor),
+  **não** o mesmo conceito de variação da Fase 2 — os dois sistemas não se misturam. Pra
+  `mercadoria`, a Fase 2 (variação) nem aparece como opção.
+- **Cardinalidade**: uma combinação de Subcategoria + Grupo de Cor pode conter **vários produtos
+  diferentes** (ex: várias camisas diferentes que são todas tamanho 42 e todas de cor escura) — não é
+  uma relação 1:1 produto↔combinação.
+- **Tudo opcional**: o lojista decide se usa Subcategoria, se usa Grupo de Cor dentro dela, ou nenhum
+  dos dois — cadastro simples de produto sem essa estrutura continua funcionando normalmente.
+- **Confirmado com o William (23/07/2026)**: Grupo de Cor é sempre aninhado dentro de uma
+  Subcategoria — Categoria → Subcategoria → Grupo de Cor é uma cadeia só, não duas facetas
+  paralelas independentes. Implementar o schema já nessa estrutura, sem alternativa a considerar.
 
-**Nota de acessibilidade (menor, não bloqueia, não é da Fase 3):** o componente `Campo` embrulha os
-filhos num `<label>`; em campos com dois botões de escolha (ex: "Modo de preço" aqui, e o seletor de
-segmento da Fase 1 em `Cadastro.tsx`/`Configuracoes.tsx`), isso faz o navegador calcular o "nome
-acessível" dos botões errado (mistura o texto dos dois) — não afeta clique de mouse/touch, só leitores
-de tela. Achado ao automatizar o teste com Playwright (`getByRole` por nome falhava, `hasText` funcionava
-normal). Não corrigido agora por ser pré-existente e fora do escopo — mencionar se o William quiser
-melhorar acessibilidade depois.
+**3.2 — Cadastro em massa**
+- Botão de "adicionar produtos em sequência" (cadastro rápido, um atrás do outro, sem fechar o
+  formulário) — vive **dentro da própria tela de Produtos** (não em tela separada), e só aparece
+  quando a loja é `mercadoria`.
+
+**3.3 — Exibição organizada no admin**
+- A lista de produtos no admin, pra lojas `mercadoria`, precisa refletir visualmente a hierarquia
+  Categoria/Subcategoria/Grupo de Cor de forma organizada — não é só uma lista plana como hoje.
+
+**3.4 — Catálogo público em formato de e-commerce**
+- Pra lojas `mercadoria`, a página pública do cardápio muda de layout: sai do formato lista-por-
+  categoria (estilo cardápio de comida) e vira algo mais parecido com catálogo de loja online (grid
+  de produtos, navegação/filtro por categoria → subcategoria → grupo de cor). Loja `alimenticio`
+  mantém o layout atual, sem mudança.
 
 ### Fase 4 — Meu Plano: alerta proativo
-Status: `[x] concluída` (23/07/2026) — testado de ponta a ponta no ambiente local (loja de teste com
-pedido pago inserido direto no banco pra simular faturamento alto), incluindo o clique no alerta até
-a tela "Meu Plano". Validado com `npx tsc -b` e `npm run build` (build completo, não só typecheck —
-foi o que pegou o bug do `card.tsx` acima). Falta o William commitar/dar push.
+Status: `[x] concluída` — revisão em 23/07/2026 confirmou que já estava implementada no mesmo commit
+`0c52bca` (22/07) das Fases 1/2. A lógica de custo/plano mais barato foi extraída de `MeuPlano.tsx`
+pra `lib/planos.ts` (`PLANOS`, `custoPlano`, `planoMaisBarato`) exatamente pra ser reaproveitada sem
+duplicar números — `pages/admin/Inicio.tsx` já mostra o alerta proativo (linha 48-58) linkando pra
+`/admin/meu-plano`, calculado com `dashboard.total_mes`. `tsc -b` e `npm run build` já validados.
 
-**O que foi feito:**
-- `frontend/src/lib/planos.ts` (novo) — extraído de `MeuPlano.tsx`: a lista `PLANOS`
-  (Start/Pro/Scale com mensalidade e taxa) e a função `custoPlano()`/`planoMaisBarato()`. Antes esses
-  números só existiam dentro de `MeuPlano.tsx`; extrair evita duplicar valores que precisam ficar em
-  sincronia entre a calculadora e o alerta.
-- `pages/admin/MeuPlano.tsx` — passou a importar de `lib/planos.ts` em vez de ter sua cópia local;
-  comportamento idêntico ao de antes.
-- `pages/admin/Inicio.tsx` — busca `loja` (nova query, a página só buscava `dashboard` antes) e
-  mostra um alerta (link clicável pra `/admin/meu-plano`) sempre que o plano mais barato pro
-  faturamento do mês (`dashboard.total_mes`) for diferente do plano atual da loja. Mantido no estilo
-  visual "antigo" que o resto do admin já usa (não migrado pra shadcn — decisão já registrada mais
-  abaixo de não migrar o resto do admin sem o William pedir).
-- Sem mudança nenhuma no backend.
+O essencial de "Meu Plano" **já existe** em `pages/admin/MeuPlano.tsx`: planos Start/Pro/Scale reais,
+troca de plano funcionando (com downgrade agendado pra renovação + cancelamento), e uma recomendação
+de "mais barato pra você" já calculada com o faturamento real do mês (`dashboard.total_mes`).
+
+O que falta: essa recomendação só aparece se o lojista entrar na tela "Meu Plano". Objetivo da fase:
+expor um alerta proativo em `pages/admin/Inicio.tsx` (ou `Dashboard.tsx`) reaproveitando a mesma lógica
+de cálculo que já existe em `MeuPlano.tsx`, avisando quando o faturamento do mês ultrapassa o ponto de
+equilíbrio pra outro plano.
 
 ## Depois das 4 fases: decisão da plataforma de pagamento
 

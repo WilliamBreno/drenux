@@ -22,6 +22,8 @@ func (r *ProdutoRepository) BuscarPorID(id uint) (*domain.Produto, error) {
 	var produto domain.Produto
 	if err := r.db.
 		Preload("Categoria").
+		Preload("Subcategoria").
+		Preload("GrupoCor").
 		Preload("Variacoes", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		Preload("Variacoes.Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		Preload("Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
@@ -44,6 +46,24 @@ func (r *ProdutoRepository) Deletar(id uint) error {
 func (r *ProdutoRepository) ContarPorCategoria(categoriaID uint) (int64, error) {
 	var total int64
 	if err := r.db.Model(&domain.Produto{}).Where("categoria_id = ?", categoriaID).Count(&total).Error; err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// ContarPorSubcategoria/ContarPorGrupoCor impedem excluir uma
+// subcategoria/grupo de cor que ainda tem produto associado.
+func (r *ProdutoRepository) ContarPorSubcategoria(subcategoriaID uint) (int64, error) {
+	var total int64
+	if err := r.db.Model(&domain.Produto{}).Where("subcategoria_id = ?", subcategoriaID).Count(&total).Error; err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (r *ProdutoRepository) ContarPorGrupoCor(grupoCorID uint) (int64, error) {
+	var total int64
+	if err := r.db.Model(&domain.Produto{}).Where("grupo_cor_id = ?", grupoCorID).Count(&total).Error; err != nil {
 		return 0, err
 	}
 	return total, nil
@@ -100,6 +120,8 @@ func (r *ProdutoRepository) BuscarEstoqueAlerta(produtoID uint) (*domain.Produto
 func (r *ProdutoRepository) ListarPorLoja(lojaID uint, apenasDisponiveis bool) ([]domain.Produto, error) {
 	query := r.db.Where("loja_id = ?", lojaID).
 		Preload("Categoria").
+		Preload("Subcategoria").
+		Preload("GrupoCor").
 		Preload("Variacoes", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		Preload("Variacoes.Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") }).
 		Preload("Fotos", func(db *gorm.DB) *gorm.DB { return db.Order("ordem, id") })

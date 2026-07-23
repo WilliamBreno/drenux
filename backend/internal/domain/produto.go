@@ -12,6 +12,18 @@ type Produto struct {
 	LojaID      uint          `gorm:"not null;index" json:"loja_id"`
 	CategoriaID uint          `gorm:"not null" json:"categoria_id"`
 	Categoria   Categoria     `gorm:"foreignKey:CategoriaID" json:"categoria,omitempty"`
+
+	// SubcategoriaID/GrupoCorID são exclusivos do segmento "mercadoria" —
+	// drill-down opcional Categoria → Subcategoria → Grupo de Cor usado
+	// pra organizar catálogo de varejo (tamanho, cor). Nunca usados por
+	// lojas "alimenticio". GrupoCorID só faz sentido quando SubcategoriaID
+	// também está preenchido (grupo de cor é sempre aninhado numa
+	// subcategoria, nunca solto).
+	SubcategoriaID *uint         `gorm:"index" json:"subcategoria_id"`
+	Subcategoria   *Subcategoria `gorm:"foreignKey:SubcategoriaID" json:"subcategoria,omitempty"`
+	GrupoCorID     *uint         `gorm:"index" json:"grupo_cor_id"`
+	GrupoCor       *GrupoCor     `gorm:"foreignKey:GrupoCorID" json:"grupo_cor,omitempty"`
+
 	Nome        string        `gorm:"size:100;not null" json:"nome"`
 	Descricao   string        `gorm:"type:text" json:"descricao"`
 	Preco       float64       `gorm:"not null" json:"preco"`

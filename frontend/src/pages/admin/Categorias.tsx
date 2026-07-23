@@ -6,9 +6,19 @@ import {
   criarCategoria,
   atualizarCategoria,
   deletarCategoria,
+  listarSubcategorias,
+  criarSubcategoria,
+  atualizarSubcategoria,
+  deletarSubcategoria,
+  listarGruposCor,
+  criarGrupoCor,
+  atualizarGrupoCor,
+  deletarGrupoCor,
+  buscarLoja,
 } from '../../api/admin';
 import type { Categoria } from '../../api/types';
 import { Campo } from '../../components/Campo';
+import { HierarquiaCategoria } from '../../components/admin/HierarquiaCategoria';
 
 export function Categorias() {
   const queryClient = useQueryClient();
@@ -17,6 +27,42 @@ export function Categorias() {
     queryKey: ['categorias'],
     queryFn: listarCategorias,
   });
+  const { data: loja } = useQuery({ queryKey: ['loja'], queryFn: buscarLoja });
+  const ehMercadoria = loja?.segmento_principal === 'mercadoria';
+
+  const { data: subcategorias } = useQuery({
+    queryKey: ['subcategorias'],
+    queryFn: listarSubcategorias,
+    enabled: ehMercadoria,
+  });
+  const { data: gruposCor } = useQuery({
+    queryKey: ['grupos-cor'],
+    queryFn: listarGruposCor,
+    enabled: ehMercadoria,
+  });
+
+  const invalidarSubcategorias = () => queryClient.invalidateQueries({ queryKey: ['subcategorias'] });
+  const invalidarGruposCor = () => queryClient.invalidateQueries({ queryKey: ['grupos-cor'] });
+
+  const mutCriarSub = useMutation({
+    mutationFn: ({ categoriaId, nome }: { categoriaId: number; nome: string }) => criarSubcategoria(categoriaId, nome),
+    onSuccess: invalidarSubcategorias,
+  });
+  const mutAtualizarSub = useMutation({
+    mutationFn: ({ id, nome }: { id: number; nome: string }) => atualizarSubcategoria(id, nome),
+    onSuccess: invalidarSubcategorias,
+  });
+  const mutDeletarSub = useMutation({ mutationFn: deletarSubcategoria, onSuccess: invalidarSubcategorias });
+
+  const mutCriarGrupo = useMutation({
+    mutationFn: ({ subcategoriaId, nome }: { subcategoriaId: number; nome: string }) => criarGrupoCor(subcategoriaId, nome),
+    onSuccess: invalidarGruposCor,
+  });
+  const mutAtualizarGrupo = useMutation({
+    mutationFn: ({ id, nome }: { id: number; nome: string }) => atualizarGrupoCor(id, nome),
+    onSuccess: invalidarGruposCor,
+  });
+  const mutDeletarGrupo = useMutation({ mutationFn: deletarGrupoCor, onSuccess: invalidarGruposCor });
 
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -163,28 +209,41 @@ export function Categorias() {
       ) : categorias && categorias.length > 0 ? (
         <ul className="space-y-3">
           {categorias.map((categoria) => (
-            <li
-              key={categoria.id}
-              className="flex items-center justify-between gap-3 rounded-2xl bg-superficie p-4 shadow-sm"
-            >
-              <p className="font-medium text-tinta">{categoria.nome}</p>
+            <li key={categoria.id} className="rounded-2xl bg-superficie shadow-sm">
+              <div className="flex items-center justify-between gap-3 p-4">
+                <p className="font-medium text-tinta">{categoria.nome}</p>
 
-              <div className="flex shrink-0 items-center gap-3">
-                <button
-                  onClick={() => abrirEdicao(categoria)}
-                  className="text-sm font-medium text-acento hover:underline"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm(`Excluir "${categoria.nome}"?`)) mutDeletar.mutate(categoria.id);
-                  }}
-                  className="text-sm text-tinta-suave hover:text-acento"
-                >
-                  Excluir
-                </button>
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    onClick={() => abrirEdicao(categoria)}
+                    className="text-sm font-medium text-acento hover:underline"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Excluir "${categoria.nome}"?`)) mutDeletar.mutate(categoria.id);
+                    }}
+                    className="text-sm text-tinta-suave hover:text-acento"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
+
+              {ehMercadoria && (
+                <HierarquiaCategoria
+                  categoria={categoria}
+                  subcategorias={subcategorias ?? []}
+                  gruposCor={gruposCor ?? []}
+                  onCriarSub={(nome) => mutCriarSub.mutate({ categoriaId: categoria.id, nome })}
+                  onAtualizarSub={(id, nome) => mutAtualizarSub.mutate({ id, nome })}
+                  onDeletarSub={(id) => mutDeletarSub.mutate(id)}
+                  onCriarGrupo={(subcategoriaId, nome) => mutCriarGrupo.mutate({ subcategoriaId, nome })}
+                  onAtualizarGrupo={(id, nome) => mutAtualizarGrupo.mutate({ id, nome })}
+                  onDeletarGrupo={(id) => mutDeletarGrupo.mutate(id)}
+                />
+              )}
             </li>
           ))}
         </ul>

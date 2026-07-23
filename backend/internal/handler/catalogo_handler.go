@@ -49,13 +49,16 @@ func (h *CatalogoHandler) BuscarCardapio(c *gin.Context) {
 			"aceita_retirada":           cardapio.Loja.AceitaRetirada,
 			"aceita_entrega":            cardapio.Loja.AceitaEntrega,
 			"aceita_guardar_entregar":   cardapio.Loja.AceitaGuardarEntregar,
+			"segmento_principal":       cardapio.Loja.SegmentoPrincipal,
 			"taxa_entrega_tipo":         cardapio.Loja.TaxaEntregaTipo,
 			"taxa_entrega_valor":        cardapio.Loja.TaxaEntregaValor,
 			"valor_minimo_pedido":       cardapio.Loja.ValorMinimoPedido,
 			"tema":                      cardapio.Loja.Tema,
 		},
-		"categorias": cardapio.Categorias,
-		"produtos":   cardapio.Produtos,
+		"categorias":    cardapio.Categorias,
+		"subcategorias": cardapio.Subcategorias,
+		"grupos_cor":    cardapio.GruposCor,
+		"produtos":      cardapio.Produtos,
 	})
 }
 

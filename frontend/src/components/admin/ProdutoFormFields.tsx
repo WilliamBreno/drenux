@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import type { Categoria } from '../../api/types';
+import type { Categoria, Subcategoria, GrupoCor } from '../../api/types';
 import type { ProdutoInput } from '../../api/admin';
 import { Campo } from '../Campo';
 import { logoMiniatura } from '../../api/upload';
@@ -8,6 +8,8 @@ interface Props {
   form: ProdutoInput;
   onChange: (form: ProdutoInput) => void;
   categorias?: Categoria[];
+  subcategorias?: Subcategoria[];
+  gruposCor?: GrupoCor[];
   enviandoFoto: boolean;
   onSelecionarFoto: (e: ChangeEvent<HTMLInputElement>) => void;
 }
@@ -15,7 +17,14 @@ interface Props {
 // Campos do formulário de produto — usado tanto na edição/criação inline
 // (Produtos.tsx) quanto no wizard de cadastro em massa, pra não duplicar
 // essa lógica nos dois lugares.
-export function ProdutoFormFields({ form, onChange, categorias, enviandoFoto, onSelecionarFoto }: Props) {
+export function ProdutoFormFields({ form, onChange, categorias, subcategorias, gruposCor, enviandoFoto, onSelecionarFoto }: Props) {
+  // Subcategoria/Grupo de Cor são exclusivos do segmento "mercadoria" e
+  // formam uma cadeia — trocar a categoria ou a subcategoria limpa o que
+  // vinha "embaixo" na hierarquia, pra nunca ficar um produto com
+  // subcategoria/grupo de cor de outra categoria.
+  const subcategoriasDaCategoria = subcategorias?.filter((s) => s.categoria_id === form.categoria_id) ?? [];
+  const gruposCorDaSubcategoria = gruposCor?.filter((g) => g.subcategoria_id === form.subcategoria_id) ?? [];
+
   return (
     <>
       <Campo label="Nome">
@@ -29,12 +38,39 @@ export function ProdutoFormFields({ form, onChange, categorias, enviandoFoto, on
           <input type="number" step="0.01" min="0.01" required value={form.preco || ''} onChange={(e) => onChange({ ...form, preco: parseFloat(e.target.value) || 0 })} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
         </Campo>
         <Campo label="Categoria" className="flex-1">
-          <select required value={form.categoria_id || ''} onChange={(e) => onChange({ ...form, categoria_id: Number(e.target.value) })} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento">
+          <select required value={form.categoria_id || ''} onChange={(e) => onChange({ ...form, categoria_id: Number(e.target.value), subcategoria_id: null, grupo_cor_id: null })} className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento">
             <option value="" disabled>Escolhe...</option>
             {categorias?.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </Campo>
       </div>
+
+      {form.tipo_produto === 'mercadoria' && subcategoriasDaCategoria.length > 0 && (
+        <div className="flex gap-3">
+          <Campo label="Subcategoria (opcional)" className="flex-1">
+            <select
+              value={form.subcategoria_id ?? ''}
+              onChange={(e) => onChange({ ...form, subcategoria_id: e.target.value === '' ? null : Number(e.target.value), grupo_cor_id: null })}
+              className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+            >
+              <option value="">Nenhuma</option>
+              {subcategoriasDaCategoria.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+            </select>
+          </Campo>
+          {form.subcategoria_id !== null && gruposCorDaSubcategoria.length > 0 && (
+            <Campo label="Grupo de cor (opcional)" className="flex-1">
+              <select
+                value={form.grupo_cor_id ?? ''}
+                onChange={(e) => onChange({ ...form, grupo_cor_id: e.target.value === '' ? null : Number(e.target.value) })}
+                className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento"
+              >
+                <option value="">Nenhum</option>
+                {gruposCorDaSubcategoria.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+              </select>
+            </Campo>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Campo label="Tipo de produto" className="flex-1">

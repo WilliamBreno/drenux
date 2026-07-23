@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { buscarCardapio } from '../api/catalogo';
 import { ProdutoCard } from '../components/ProdutoCard';
 import { AbasCategorias } from '../components/AbasCategorias';
+import { CatalogoGrid } from '../components/CatalogoGrid';
 import { CarrinhoFlutuante } from '../components/CarrinhoFlutuante';
 import { CarrinhoDrawer } from '../components/CarrinhoDrawer';
 import { HistoricoDrawer } from '../components/HistoricoDrawer';
@@ -98,6 +99,8 @@ export function CardapioPublico() {
     );
   }
 
+  const ehMercadoria = data.loja.segmento_principal === 'mercadoria';
+
   const produtosFiltrados = categoriaAtiva
     ? data.produtos.filter((produto) => produto.categoria_id === categoriaAtiva)
     : data.produtos;
@@ -141,21 +144,34 @@ export function CardapioPublico() {
         </div>
       </header>
 
-      <div className="sticky top-0 z-10 bg-fundo/95 py-3 backdrop-blur">
-        <AbasCategorias
-          categorias={data.categorias}
-          ativa={categoriaAtiva}
-          onSelecionar={setCategoriaAtiva}
-        />
-      </div>
+      {ehMercadoria ? (
+        <main className="mx-auto max-w-4xl">
+          <CatalogoGrid
+            produtos={data.produtos}
+            categorias={data.categorias}
+            subcategorias={data.subcategorias}
+            gruposCor={data.grupos_cor}
+          />
+        </main>
+      ) : (
+        <>
+          <div className="sticky top-0 z-10 bg-fundo/95 py-3 backdrop-blur">
+            <AbasCategorias
+              categorias={data.categorias}
+              ativa={categoriaAtiva}
+              onSelecionar={setCategoriaAtiva}
+            />
+          </div>
 
-      <main className="mx-auto max-w-2xl space-y-3 px-4 pt-2">
-        {produtosFiltrados.length === 0 ? (
-          <p className="py-12 text-center text-tinta-suave">Nenhum produto por aqui ainda.</p>
-        ) : (
-          produtosFiltrados.map((produto) => <ProdutoCard key={produto.id} produto={produto} />)
-        )}
-      </main>
+          <main className="mx-auto max-w-2xl space-y-3 px-4 pt-2">
+            {produtosFiltrados.length === 0 ? (
+              <p className="py-12 text-center text-tinta-suave">Nenhum produto por aqui ainda.</p>
+            ) : (
+              produtosFiltrados.map((produto) => <ProdutoCard key={produto.id} produto={produto} />)
+            )}
+          </main>
+        </>
+      )}
 
       <CarrinhoFlutuante onAbrir={() => setCarrinhoAberto(true)} />
 

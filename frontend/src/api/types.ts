@@ -10,6 +10,29 @@ export interface Categoria {
   updated_at: string;
 }
 
+// Subcategoria e GrupoCor são exclusivos do segmento "mercadoria" — drill-
+// down opcional Categoria → Subcategoria → Grupo de Cor pra organizar
+// catálogo de varejo (ex: tamanho → cor). Grupo de Cor é sempre aninhado
+// numa Subcategoria, nunca solto direto na Categoria. Não confundir com
+// VariacaoProduto (aditiva sobre o preço, recurso de cardápio).
+export interface Subcategoria {
+  id: number;
+  categoria_id: number;
+  nome: string;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GrupoCor {
+  id: number;
+  subcategoria_id: number;
+  nome: string;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // ModoPrecoVariacao: "aditivo" soma preco_adicional ao preço base do
 // produto (comportamento original); "absoluto" faz preco_adicional ser o
 // preço final da variação (ignora o preço base) — pensado pro segmento
@@ -55,6 +78,10 @@ export interface Produto {
   loja_id: number;
   categoria_id: number;
   categoria?: Categoria;
+  subcategoria_id: number | null;
+  subcategoria?: Subcategoria;
+  grupo_cor_id: number | null;
+  grupo_cor?: GrupoCor;
   nome: string;
   descricao: string;
   preco: number;
@@ -135,6 +162,7 @@ export interface CardapioPublico {
     aceita_retirada: boolean;
     aceita_entrega: boolean;
     aceita_guardar_entregar: boolean;
+    segmento_principal: TipoProduto;
     taxa_entrega_tipo: TaxaEntregaTipo;
     taxa_entrega_valor: number;
     taxa_entrega_base: number;
@@ -143,6 +171,8 @@ export interface CardapioPublico {
     tema: string;
   };
   categorias: Categoria[];
+  subcategorias: Subcategoria[];
+  grupos_cor: GrupoCor[];
   produtos: Produto[];
 }
 

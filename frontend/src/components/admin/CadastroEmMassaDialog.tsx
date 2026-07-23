@@ -4,7 +4,7 @@ import {
   criarProduto, criarVariacao, adicionarFotoVariacao, deletarFotoVariacao,
   type ProdutoInput, type VariacaoInput,
 } from '../../api/admin';
-import type { Categoria, Produto, TipoProduto, VariacaoProduto } from '../../api/types';
+import type { Categoria, Subcategoria, GrupoCor, Produto, TipoProduto, VariacaoProduto } from '../../api/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { ProdutoFormFields } from './ProdutoFormFields';
@@ -15,13 +15,16 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categorias?: Categoria[];
+  subcategorias?: Subcategoria[];
+  gruposCor?: GrupoCor[];
   segmentoPadrao: TipoProduto;
 }
 
 function produtoVazio(categorias: Categoria[] | undefined, segmento: TipoProduto): ProdutoInput {
   return {
     nome: '', descricao: '', preco: 0, foto_url: '', disponivel: true,
-    categoria_id: categorias?.[0]?.id ?? 0, estoque_atual: null, estoque_alerta: null,
+    categoria_id: categorias?.[0]?.id ?? 0, subcategoria_id: null, grupo_cor_id: null,
+    estoque_atual: null, estoque_alerta: null,
     tipo_produto: segmento, peso_gramas: null,
   };
 }
@@ -39,7 +42,7 @@ function variacaoVazia(segmento: TipoProduto): VariacaoInput {
 // pra lojas de mercadoria com catálogos maiores, mas funciona pra qualquer
 // segmento. Cada etapa é montada de novo (dialog é desmontado ao fechar, ver
 // Produtos.tsx), então o estado interno nasce limpo a cada abertura.
-export function CadastroEmMassaDialog({ open, onOpenChange, categorias, segmentoPadrao }: Props) {
+export function CadastroEmMassaDialog({ open, onOpenChange, categorias, subcategorias, gruposCor, segmentoPadrao }: Props) {
   const queryClient = useQueryClient();
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ['produtos'] });
 
@@ -161,7 +164,7 @@ export function CadastroEmMassaDialog({ open, onOpenChange, categorias, segmento
 
         {etapa === 'produto' ? (
           <form onSubmit={salvarProduto} className="space-y-4">
-            <ProdutoFormFields form={form} onChange={setForm} categorias={categorias} enviandoFoto={enviandoFoto} onSelecionarFoto={selecionarFoto} />
+            <ProdutoFormFields form={form} onChange={setForm} categorias={categorias} subcategorias={subcategorias} gruposCor={gruposCor} enviandoFoto={enviandoFoto} onSelecionarFoto={selecionarFoto} />
             {erro && <p className="text-sm text-acento">{erro}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

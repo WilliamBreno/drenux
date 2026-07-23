@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Categoria, Produto, Pedido, Loja, TipoProduto, SolicitacaoEntrega } from './types';
+import type { Categoria, Subcategoria, GrupoCor, Produto, Pedido, Loja, TipoProduto, SolicitacaoEntrega } from './types';
 
 // Categorias
 export async function listarCategorias(): Promise<Categoria[]> {
@@ -21,6 +21,46 @@ export async function deletarCategoria(id: number): Promise<void> {
   await api.delete(`/admin/categorias/${id}`);
 }
 
+// Subcategorias e Grupos de Cor — exclusivos do segmento "mercadoria"
+// (Categoria → Subcategoria → Grupo de Cor, ver plano-melhorias-drenux.md Fase 3).
+export async function listarSubcategorias(): Promise<Subcategoria[]> {
+  const { data } = await api.get<Subcategoria[]>('/admin/subcategorias');
+  return data;
+}
+
+export async function criarSubcategoria(categoriaId: number, nome: string): Promise<Subcategoria> {
+  const { data } = await api.post<Subcategoria>(`/admin/categorias/${categoriaId}/subcategorias`, { nome });
+  return data;
+}
+
+export async function atualizarSubcategoria(id: number, nome: string): Promise<Subcategoria> {
+  const { data } = await api.put<Subcategoria>(`/admin/subcategorias/${id}`, { nome });
+  return data;
+}
+
+export async function deletarSubcategoria(id: number): Promise<void> {
+  await api.delete(`/admin/subcategorias/${id}`);
+}
+
+export async function listarGruposCor(): Promise<GrupoCor[]> {
+  const { data } = await api.get<GrupoCor[]>('/admin/grupos-cor');
+  return data;
+}
+
+export async function criarGrupoCor(subcategoriaId: number, nome: string): Promise<GrupoCor> {
+  const { data } = await api.post<GrupoCor>(`/admin/subcategorias/${subcategoriaId}/grupos-cor`, { nome });
+  return data;
+}
+
+export async function atualizarGrupoCor(id: number, nome: string): Promise<GrupoCor> {
+  const { data } = await api.put<GrupoCor>(`/admin/grupos-cor/${id}`, { nome });
+  return data;
+}
+
+export async function deletarGrupoCor(id: number): Promise<void> {
+  await api.delete(`/admin/grupos-cor/${id}`);
+}
+
 // Produtos
 export interface ProdutoInput {
   nome: string;
@@ -29,6 +69,8 @@ export interface ProdutoInput {
   foto_url: string;
   disponivel: boolean;
   categoria_id: number;
+  subcategoria_id: number | null;
+  grupo_cor_id: number | null;
   estoque_atual: number | null;
   estoque_alerta: number | null;
   tipo_produto: TipoProduto;

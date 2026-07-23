@@ -8,44 +8,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { criarCheckoutAssinatura } from '../api/planos';
-
-interface Plano {
-  id: string;
-  nome: string;
-  mensal: number;
-  taxa: number;
-  desc: string;
-}
-
-const PLANOS: Plano[] = [
-  { id: 'start', nome: 'Start', mensal: 0, taxa: 0.08, desc: 'Sem risco, comece de graça' },
-  { id: 'pro', nome: 'Pro', mensal: 129, taxa: 0.04, desc: 'Pra loja em crescimento' },
-  { id: 'scale', nome: 'Scale', mensal: 349, taxa: 0.015, desc: 'Volume alto, custo mínimo' },
-];
-
-// Sobrescreve só os tokens de cor do shadcn dentro dessa página — preto
-// e dourado, puxados da marca. Não mexe em nada do sistema de temas do
-// cardápio público (--color-fundo, --color-tinta etc.), que usa
-// variáveis completamente diferentes.
-const temaPlanos = {
-  '--background': '#08080a',
-  '--foreground': '#f2efe8',
-  '--card': '#131318',
-  '--card-foreground': '#f2efe8',
-  '--popover': '#131318',
-  '--popover-foreground': '#f2efe8',
-  '--primary': '#d4af6a',
-  '--primary-foreground': '#08080a',
-  '--secondary': '#1c1c22',
-  '--secondary-foreground': '#f2efe8',
-  '--muted': '#1c1c22',
-  '--muted-foreground': '#8f8b80',
-  '--accent': '#1c1c22',
-  '--accent-foreground': '#d4af6a',
-  '--border': 'rgba(212, 175, 106, 0.18)',
-  '--input': 'rgba(212, 175, 106, 0.18)',
-  '--ring': '#d4af6a',
-} as React.CSSProperties;
+import { PLANOS, temaPlanos, FONTE_DRX_SERIF_CSS } from '../lib/planos';
 
 function fmt(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
@@ -79,8 +42,7 @@ export function Planos() {
   return (
     <div style={temaPlanos} className="min-h-screen bg-background text-foreground">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap');
-        .drx-serif { font-family: 'Cormorant Garamond', serif; }
+        ${FONTE_DRX_SERIF_CSS}
         @keyframes drx-girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes drx-pulsar { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
         .drx-estrela { animation: drx-girar 22s linear infinite, drx-pulsar 4s ease-in-out infinite; }

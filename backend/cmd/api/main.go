@@ -31,6 +31,8 @@ func main() {
 		&domain.Usuario{},
 		&domain.Loja{},
 		&domain.Categoria{},
+		&domain.Subcategoria{},
+		&domain.GrupoCor{},
 		&domain.Produto{},
 		&domain.FotoProduto{},
 		&domain.VariacaoProduto{},
@@ -65,6 +67,12 @@ func main() {
 
 	categoriaService := service.NewCategoriaService(db)
 	categoriaHandler := handler.NewCategoriaHandler(categoriaService)
+
+	subcategoriaService := service.NewSubcategoriaService(db)
+	subcategoriaHandler := handler.NewSubcategoriaHandler(subcategoriaService)
+
+	grupoCorService := service.NewGrupoCorService(db)
+	grupoCorHandler := handler.NewGrupoCorHandler(grupoCorService)
 
 	produtoService := service.NewProdutoService(db)
 	produtoHandler := handler.NewProdutoHandler(produtoService)
@@ -176,6 +184,18 @@ func main() {
 	admin.POST("/categorias", categoriaHandler.Criar)
 	admin.PUT("/categorias/:id", categoriaHandler.Atualizar)
 	admin.DELETE("/categorias/:id", categoriaHandler.Deletar)
+
+	// Hierarquia Categoria → Subcategoria → Grupo de Cor — exclusiva do
+	// segmento "mercadoria" (ver docs/plano-melhorias-drenux.md, Fase 3).
+	admin.GET("/subcategorias", subcategoriaHandler.Listar)
+	admin.POST("/categorias/:categoriaId/subcategorias", subcategoriaHandler.Criar)
+	admin.PUT("/subcategorias/:id", subcategoriaHandler.Atualizar)
+	admin.DELETE("/subcategorias/:id", subcategoriaHandler.Deletar)
+
+	admin.GET("/grupos-cor", grupoCorHandler.Listar)
+	admin.POST("/subcategorias/:subcategoriaId/grupos-cor", grupoCorHandler.Criar)
+	admin.PUT("/grupos-cor/:id", grupoCorHandler.Atualizar)
+	admin.DELETE("/grupos-cor/:id", grupoCorHandler.Deletar)
 
 	admin.GET("/produtos", produtoHandler.Listar)
 	admin.POST("/produtos", produtoHandler.Criar)

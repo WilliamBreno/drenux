@@ -20,17 +20,26 @@ type ProdutoInput struct {
 	EstoqueAlerta *int
 	TipoProduto   domain.TipoProduto
 	PesoGramas    *int
+
+	// SubcategoriaID/GrupoCorID são opcionais e exclusivos do segmento
+	// "mercadoria" — ver domain.Produto.
+	SubcategoriaID *uint
+	GrupoCorID     *uint
 }
 
 type ProdutoService struct {
-	produtoRepo   *repository.ProdutoRepository
-	categoriaRepo *repository.CategoriaRepository
+	produtoRepo      *repository.ProdutoRepository
+	categoriaRepo    *repository.CategoriaRepository
+	subcategoriaRepo *repository.SubcategoriaRepository
+	grupoCorRepo     *repository.GrupoCorRepository
 }
 
 func NewProdutoService(db *gorm.DB) *ProdutoService {
 	return &ProdutoService{
-		produtoRepo:   repository.NewProdutoRepository(db),
-		categoriaRepo: repository.NewCategoriaRepository(db),
+		produtoRepo:      repository.NewProdutoRepository(db),
+		categoriaRepo:    repository.NewCategoriaRepository(db),
+		subcategoriaRepo: repository.NewSubcategoriaRepository(db),
+		grupoCorRepo:     repository.NewGrupoCorRepository(db),
 	}
 }
 
@@ -48,19 +57,25 @@ func (s *ProdutoService) Criar(lojaID uint, input ProdutoInput) (*domain.Produto
 	if err != nil {
 		return nil, err
 	}
+	subcategoriaID, grupoCorID, err := s.validarSubcategoriaEGrupo(input.CategoriaID, input.SubcategoriaID, input.GrupoCorID)
+	if err != nil {
+		return nil, err
+	}
 
 	produto := domain.Produto{
-		LojaID:        lojaID,
-		CategoriaID:   input.CategoriaID,
-		Nome:          input.Nome,
-		Descricao:     input.Descricao,
-		Preco:         input.Preco,
-		FotoURL:       input.FotoURL,
-		Disponivel:    input.Disponivel,
-		EstoqueAtual:  input.EstoqueAtual,
-		EstoqueAlerta: input.EstoqueAlerta,
-		TipoProduto:   tipo,
-		PesoGramas:    peso,
+		LojaID:         lojaID,
+		CategoriaID:    input.CategoriaID,
+		SubcategoriaID: subcategoriaID,
+		GrupoCorID:     grupoCorID,
+		Nome:           input.Nome,
+		Descricao:      input.Descricao,
+		Preco:          input.Preco,
+		FotoURL:        input.FotoURL,
+		Disponivel:     input.Disponivel,
+		EstoqueAtual:   input.EstoqueAtual,
+		EstoqueAlerta:  input.EstoqueAlerta,
+		TipoProduto:    tipo,
+		PesoGramas:     peso,
 	}
 	if err := s.produtoRepo.Criar(&produto); err != nil {
 		return nil, fmt.Errorf("criando produto: %w", err)
@@ -84,6 +99,10 @@ func (s *ProdutoService) Atualizar(lojaID, produtoID uint, input ProdutoInput) (
 	if err != nil {
 		return nil, err
 	}
+	subcategoriaID, grupoCorID, err := s.validarSubcategoriaEGrupo(input.CategoriaID, input.SubcategoriaID, input.GrupoCorID)
+	if err != nil {
+		return nil, err
+	}
 
 	produto.Nome = input.Nome
 	produto.Descricao = input.Descricao
@@ -91,6 +110,8 @@ func (s *ProdutoService) Atualizar(lojaID, produtoID uint, input ProdutoInput) (
 	produto.FotoURL = input.FotoURL
 	produto.Disponivel = input.Disponivel
 	produto.CategoriaID = input.CategoriaID
+	produto.SubcategoriaID = subcategoriaID
+	produto.GrupoCorID = grupoCorID
 	produto.EstoqueAtual = input.EstoqueAtual
 	produto.EstoqueAlerta = input.EstoqueAlerta
 	produto.TipoProduto = tipo
@@ -156,4 +177,35 @@ func (s *ProdutoService) validarCategoriaDaLoja(lojaID, categoriaID uint) error 
 		return errors.New("categoria não pertence a essa loja")
 	}
 	return nil
+}
+
+// validarSubcategoriaEGrupo confere a cadeia Categoria → Subcategoria →
+// Grupo de Cor: a subcategoria (se informada) precisa pertencer à mesma
+// categoria do produto (que por sua vez já foi validada como sendo da
+// loja em validarCategoriaDaLoja), e o grupo de cor (se informado)
+// precisa pertencer à subcategoria informada — grupo de cor nunca existe
+// sem subcategoria.
+func (s *ProdutoService) validarSubcategoriaEGrupo(categoriaID uint, subcategoriaID, grupoCorID *uint) (*uint, *uint, error) {
+	if subcategoriaID == nil {
+		if grupoCorID != nil {
+			return nil, nil, errors.New("grupo de cor exige uma subcategoria")
+		}
+		return nil, nil, nil
+	}
+
+	subcategoria, err := s.subcategoriaRepo.BuscarPorID(*subcategoriaID)
+	if err != nil || subcategoria.CategoriaID != categoriaID {
+		return nil, nil, errors.New("subcategoria não pertence à categoria escolhida")
+	}
+
+	if grupoCorID == nil {
+		return subcategoriaID, nil, nil
+	}
+
+	grupoCor, err := s.grupoCorRepo.BuscarPorID(*grupoCorID)
+	if err != nil || grupoCor.SubcategoriaID != *subcategoriaID {
+		return nil, nil, errors.New("grupo de cor não pertence à subcategoria escolhida")
+	}
+
+	return subcategoriaID, grupoCorID, nil
 }
