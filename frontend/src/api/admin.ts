@@ -200,6 +200,12 @@ export async function deletarFoto(produtoId: number, fotoId: number): Promise<vo
   await api.delete(`/admin/fotos/${produtoId}/${fotoId}`);
 }
 
+// Reordena a galeria de fotos do produto — a primeira da lista vira a
+// foto principal exibida no cardápio.
+export async function reordenarFotos(produtoId: number, ids: number[]): Promise<void> {
+  await api.put(`/admin/fotos/${produtoId}/reordenar`, { ids });
+}
+
 // Fotos de variação (modo de preço "absoluto")
 export async function adicionarFotoVariacao(produtoId: number, variacaoId: number, url: string, ordem: number): Promise<import('./types').FotoVariacao> {
   const { data } = await api.post(`/admin/variacoes/${produtoId}/${variacaoId}/fotos`, { url, ordem });

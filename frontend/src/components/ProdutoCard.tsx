@@ -38,7 +38,6 @@ export function ProdutoCard({ produto }: Props) {
   }
 
   const precoFinal = precoItem(produto, variacaoSelecionada);
-  const podeAdicionar = !temVariacoes || variacaoSelecionada !== null;
 
   function abrirModal(indice: number) {
     if (fotos.length === 0) return;
@@ -47,7 +46,8 @@ export function ProdutoCard({ produto }: Props) {
   }
 
   function handleAdicionar() {
-    if (!podeAdicionar) return;
+    // Escolher uma variação é opcional — o cliente pode adicionar o
+    // produto "puro" (preço/foto base) mesmo quando ele tem variações.
     adicionar(produto, variacaoSelecionada ?? undefined);
     if (variacoes.length > 1) selecionarVariacao(null);
   }
@@ -139,10 +139,9 @@ export function ProdutoCard({ produto }: Props) {
 
             <button
               onClick={handleAdicionar}
-              disabled={!podeAdicionar}
-              className="rounded-full bg-acento px-4 py-1.5 text-sm font-semibold text-superficie transition active:scale-95 hover:bg-acento/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-full bg-acento px-4 py-1.5 text-sm font-semibold text-superficie transition active:scale-95 hover:bg-acento/90"
             >
-              {temVariacoes && !variacaoSelecionada ? 'Escolha uma opção' : 'Adicionar'}
+              Adicionar
             </button>
           </div>
         </div>

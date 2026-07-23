@@ -12,6 +12,7 @@ import { ProdutoFormFields } from '../../components/admin/ProdutoFormFields';
 import { VariacaoFormFields } from '../../components/admin/VariacaoFormFields';
 import { CadastroEmMassaDialog } from '../../components/admin/CadastroEmMassaDialog';
 import { enviarImagem, logoMiniatura } from '../../api/upload';
+import { rotuloCatalogo } from '../../lib/utils';
 
 const formVazio: ProdutoInput = {
   nome: '',
@@ -314,7 +315,7 @@ export function Produtos() {
                         {v.modo_preco === 'absoluto'
                           ? `R$ ${v.preco_adicional.toFixed(2).replace('.', ',')} (preço próprio)`
                           : v.preco_adicional > 0 ? `+R$ ${v.preco_adicional.toFixed(2).replace('.', ',')}` : 'Sem adicional'}
-                        {!v.mostrar_valor_adicional && ' · valor oculto no cardápio'}
+                        {!v.mostrar_valor_adicional && ` · valor oculto no ${rotuloCatalogo(loja?.segmento_principal)}`}
                         {v.estoque_atual !== null && ` · ${v.estoque_atual === 0 ? 'Esgotada' : `${v.estoque_atual} em estoque`}`}
                       </p>
                     </div>
@@ -334,7 +335,7 @@ export function Produtos() {
               <form onSubmit={(e) => salvarVariacao(e, produto.id)} className="space-y-3 rounded-xl border border-tinta/15 p-3">
                 <p className="text-xs font-medium text-tinta">{editandoVariacaoId ? 'Editar variação' : 'Nova variação'}</p>
 
-                <VariacaoFormFields form={formVariacao} onChange={setFormVariacao} />
+                <VariacaoFormFields form={formVariacao} onChange={setFormVariacao} segmentoLoja={loja?.segmento_principal} />
 
                 {editandoVariacaoId && formVariacao.modo_preco === 'absoluto' && (() => {
                   const variacaoAtual = produto.variacoes?.find((v) => v.id === editandoVariacaoId);
@@ -462,7 +463,7 @@ export function Produtos() {
         <form onSubmit={salvar} className="space-y-4 rounded-2xl bg-superficie p-5 shadow-sm">
           <h2 className="font-display text-lg tracking-wide text-tinta">{editandoId ? 'Editar produto' : 'Novo produto'}</h2>
 
-          <ProdutoFormFields form={form} onChange={setForm} categorias={categorias} subcategorias={subcategorias} gruposCor={gruposCor} enviandoFoto={enviandoFoto} onSelecionarFoto={selecionarFoto} />
+          <ProdutoFormFields form={form} onChange={setForm} categorias={categorias} subcategorias={subcategorias} gruposCor={gruposCor} enviandoFoto={enviandoFoto} onSelecionarFoto={selecionarFoto} segmentoLoja={loja?.segmento_principal} />
 
           {erro && <p className="text-sm text-acento">{erro}</p>}
           <div className="flex gap-3">

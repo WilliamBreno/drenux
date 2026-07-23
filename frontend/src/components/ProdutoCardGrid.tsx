@@ -31,14 +31,14 @@ export function ProdutoCardGrid({ produto }: Props) {
       : [];
 
   const precoFinal = precoItem(produto, variacaoSelecionada);
-  const podeAdicionar = !temVariacoes || variacaoSelecionada !== null;
 
   function selecionarVariacao(v: VariacaoProduto | null) {
     setVariacaoSelecionada(v);
   }
 
   function handleAdicionar() {
-    if (!podeAdicionar) return;
+    // Escolher uma variação é opcional — o cliente pode adicionar o
+    // produto "puro" (preço/foto base) mesmo quando ele tem variações.
     adicionar(produto, variacaoSelecionada ?? undefined);
     if (variacoes.length > 1) selecionarVariacao(null);
   }
@@ -87,10 +87,9 @@ export function ProdutoCardGrid({ produto }: Props) {
             </span>
             <button
               onClick={handleAdicionar}
-              disabled={!podeAdicionar}
-              className="rounded-full bg-acento px-3 py-1 text-xs font-semibold text-superficie transition active:scale-95 hover:bg-acento/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-full bg-acento px-3 py-1 text-xs font-semibold text-superficie transition active:scale-95 hover:bg-acento/90"
             >
-              {temVariacoes && !variacaoSelecionada ? 'Escolher' : 'Adicionar'}
+              Adicionar
             </button>
           </div>
         </div>

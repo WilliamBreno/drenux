@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
+import type { TipoProduto } from '../api/types';
+import { rotuloCatalogo } from '../lib/utils';
 
 interface Props {
   slug: string;
   nomeLoja: string;
+  segmentoLoja?: TipoProduto;
 }
 
-export function QRCodeCardapio({ slug, nomeLoja }: Props) {
+export function QRCodeCardapio({ slug, nomeLoja, segmentoLoja }: Props) {
+  const rotulo = rotuloCatalogo(segmentoLoja);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gerado, setGerado] = useState(false);
 
@@ -37,10 +41,10 @@ export function QRCodeCardapio({ slug, nomeLoja }: Props) {
   return (
     <div className="space-y-4 rounded-2xl bg-superficie p-5 shadow-sm">
       <div>
-        <h2 className="font-display text-lg tracking-wide text-tinta">QR Code do cardápio</h2>
+        <h2 className="font-display text-lg tracking-wide text-tinta">QR Code do {rotulo}</h2>
         <p className="mt-1 text-sm text-tinta-suave">
           Coloca em embalagens, cartazes ou na bio das redes sociais — quem escanear vai direto pro
-          cardápio da <strong>{nomeLoja}</strong>.
+          {' '}{rotulo} da <strong>{nomeLoja}</strong>.
         </p>
       </div>
 
@@ -51,7 +55,7 @@ export function QRCodeCardapio({ slug, nomeLoja }: Props) {
 
         <div className="space-y-3 text-sm">
           <div className="rounded-lg bg-fundo px-3 py-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Link do cardápio</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">Link do {rotulo}</p>
             <p className="mt-0.5 break-all font-carimbo text-sm text-tinta">{url}</p>
           </div>
 

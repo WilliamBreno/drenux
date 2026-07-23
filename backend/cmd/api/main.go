@@ -210,6 +210,7 @@ func main() {
 	admin.DELETE("/cupons/:id", cupomHandler.Deletar)
 
 	admin.POST("/fotos/:produtoId", fotoHandler.Adicionar)
+	admin.PUT("/fotos/:produtoId/reordenar", fotoHandler.Reordenar)
 	admin.DELETE("/fotos/:produtoId/:fotoId", fotoHandler.Deletar)
 
 	variacoes := admin.Group("/variacoes")

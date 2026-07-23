@@ -158,8 +158,9 @@ export function Categorias() {
       </div>
 
       <p className="text-sm text-tinta-suave">
-        São as abas que o cliente vê no cardápio (ex: Salgados, Doces). Toda loja já nasce com
-        essas duas — adiciona mais se quiser organizar diferente.
+        {ehMercadoria
+          ? 'São as categorias que organizam seu catálogo (ex: Tênis, Camisetas) — o cliente navega por elas no catálogo público, e você pode detalhar cada uma em subcategorias e grupos de cor logo abaixo.'
+          : 'São as abas que o cliente vê no cardápio (ex: Salgados, Doces). Toda loja já nasce com essas duas — adiciona mais se quiser organizar diferente.'}
       </p>
 
       {mostrarForm && (

@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { ShimmerButton } from '@/components/ui/shimmer-button';
-import { PLANOS, custoPlano, temaPlanos, FONTE_DRX_SERIF_CSS } from '../../lib/planos';
+import { PLANOS, custoPlano } from '../../lib/planos';
 
 const NOME_PLANO: Record<string, string> = { start: 'Start', pro: 'Pro', scale: 'Scale' };
 
@@ -67,150 +67,149 @@ export function MeuPlano() {
   if (!loja) return <p className="text-tinta-suave">Carregando...</p>;
 
   return (
-    <div style={temaPlanos} className="-mx-6 -mb-6 rounded-3xl bg-background px-6 py-8 text-foreground sm:px-8">
-      <style>{FONTE_DRX_SERIF_CSS}</style>
+    <div className="space-y-6">
+      <h1 className="font-display text-2xl tracking-wide text-tinta">Meu Plano</h1>
 
-      <div className="mx-auto max-w-2xl space-y-6">
-        <h1 className="drx-serif text-3xl font-medium">Meu Plano</h1>
-
-        {/* Plano atual */}
-        <Card>
-          <CardHeader>
-            <CardDescription>Plano atual</CardDescription>
-            <CardTitle className="drx-serif text-3xl font-medium text-primary">{NOME_PLANO[loja.plano] ?? 'Start'}</CardTitle>
-          </CardHeader>
-          {loja.plano_agendado && (
-            <CardContent>
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary px-4 py-3">
-                <p className="text-sm">
-                  Você vai mudar pro plano <strong>{NOME_PLANO[loja.plano_agendado]}</strong> na próxima renovação.
-                </p>
-                <Button size="sm" variant="outline" onClick={desfazerAgendamento} disabled={cancelando}>
-                  {cancelando ? 'Cancelando...' : 'Cancelar'}
-                </Button>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-
-        {/* Calculadora */}
-        <Card>
-          <CardHeader>
-            <CardDescription>
-              {dashboard ? 'Faturamento do mês (ajuste pra simular outros cenários)' : 'Simule seu faturamento mensal'}
-            </CardDescription>
-            <CardTitle className="drx-serif text-3xl font-medium text-primary">
-              R$ <NumberTicker value={faturamentoUsado} className="text-primary" />
-            </CardTitle>
-          </CardHeader>
+      {/* Plano atual */}
+      <Card className="border-none bg-superficie ring-1 ring-tinta/10">
+        <CardHeader>
+          <CardDescription className="text-tinta-suave">Plano atual</CardDescription>
+          <CardTitle className="font-display text-2xl tracking-wide text-tinta">{NOME_PLANO[loja.plano] ?? 'Start'}</CardTitle>
+        </CardHeader>
+        {loja.plano_agendado && (
           <CardContent>
-            <Slider
-              value={[faturamentoUsado]}
-              onValueChange={(v) => setFaturamento(Array.isArray(v) ? v[0] : v)}
-              min={0}
-              max={20000}
-              step={100}
-            />
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-douro/10 px-4 py-3">
+              <p className="text-sm text-tinta">
+                Você vai mudar pro plano <strong>{NOME_PLANO[loja.plano_agendado]}</strong> na próxima renovação.
+              </p>
+              <Button size="sm" variant="outline" onClick={desfazerAgendamento} disabled={cancelando}>
+                {cancelando ? 'Cancelando...' : 'Cancelar'}
+              </Button>
+            </div>
           </CardContent>
-        </Card>
+        )}
+      </Card>
 
-        {erro && <p className="text-sm text-acento">{erro}</p>}
+      {/* Calculadora */}
+      <Card className="border-none bg-superficie ring-1 ring-tinta/10">
+        <CardHeader>
+          <CardDescription className="text-tinta-suave">
+            {dashboard ? 'Faturamento do mês (ajuste pra simular outros cenários)' : 'Simule seu faturamento mensal'}
+          </CardDescription>
+          <CardTitle className="font-carimbo text-2xl font-semibold text-acento">
+            R$ <NumberTicker value={faturamentoUsado} className="text-acento" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Slider
+            value={[faturamentoUsado]}
+            onValueChange={(v) => setFaturamento(Array.isArray(v) ? v[0] : v)}
+            min={0}
+            max={20000}
+            step={100}
+          />
+        </CardContent>
+      </Card>
 
-        {/* Cards de plano */}
-        <div className="space-y-4">
-          {custos.map((p) => {
-            const ehAtual = p.id === loja.plano;
-            const recomendado = p.total === menorCusto && !ehAtual;
-            const efetivo = faturamentoUsado > 0 ? (p.total / faturamentoUsado) * 100 : p.taxa * 100;
+      {erro && <p className="text-sm text-acento">{erro}</p>}
 
-            return (
-              <Card key={p.id} className={recomendado ? 'ring-2 ring-primary' : ''}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
+      {/* Cards de plano */}
+      <div className="space-y-4">
+        {custos.map((p) => {
+          const ehAtual = p.id === loja.plano;
+          const recomendado = p.total === menorCusto && !ehAtual;
+          const efetivo = faturamentoUsado > 0 ? (p.total / faturamentoUsado) * 100 : p.taxa * 100;
+
+          return (
+            <Card
+              key={p.id}
+              className={`border-none bg-superficie ring-1 ${recomendado ? 'ring-2 ring-acento' : 'ring-tinta/10'}`}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="font-display text-lg tracking-wide text-tinta">{p.nome}</CardTitle>
+                    <CardDescription className="text-tinta-suave">{p.desc}</CardDescription>
+                  </div>
+                  {ehAtual && <Badge className="bg-douro/20 text-douro">Plano atual</Badge>}
+                  {recomendado && <Badge className="bg-acento/10 text-acento">Mais barato pra você</Badge>}
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-tinta-suave">
+                    Valores fixos do plano
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-fundo px-3 py-2.5">
+                      <p className="text-xs text-tinta-suave">Mensalidade</p>
+                      <p className="font-carimbo text-lg font-semibold text-tinta">{p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)}</p>
+                    </div>
+                    <div className="rounded-lg bg-fundo px-3 py-2.5">
+                      <p className="text-xs text-tinta-suave">Taxa por pedido</p>
+                      <p className="font-carimbo text-lg font-semibold text-tinta">{(p.taxa * 100).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-tinta-suave">
+                    Projeção com o faturamento simulado
+                  </p>
+                  <div className="flex items-center justify-between border-t border-tinta/10 pt-3">
                     <div>
-                      <CardTitle className="drx-serif text-xl font-medium">{p.nome}</CardTitle>
-                      <CardDescription>{p.desc}</CardDescription>
+                      <p className="text-xs text-tinta-suave">
+                        {fmt(p.valorTaxa)} de taxa + {p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)} de mensalidade
+                      </p>
+                      <p className="font-carimbo text-xl font-semibold text-acento">
+                        R$ <NumberTicker value={p.total} className="text-acento" />
+                        <span className="text-sm font-normal text-tinta-suave"> /mês*</span>
+                      </p>
                     </div>
-                    {ehAtual && <Badge>Plano atual</Badge>}
-                    {recomendado && <Badge className="bg-primary text-primary-foreground">Mais barato pra você</Badge>}
+                    <span className="rounded-lg bg-fundo px-3 py-1.5 text-sm font-semibold text-tinta">
+                      {efetivo.toFixed(1)}%
+                    </span>
                   </div>
-                </CardHeader>
+                </div>
+              </CardContent>
 
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Valores fixos do plano
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-lg bg-secondary px-3 py-2.5">
-                        <p className="text-xs text-muted-foreground">Mensalidade</p>
-                        <p className="text-lg font-semibold">{p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)}</p>
-                      </div>
-                      <div className="rounded-lg bg-secondary px-3 py-2.5">
-                        <p className="text-xs text-muted-foreground">Taxa por pedido</p>
-                        <p className="text-lg font-semibold">{(p.taxa * 100).toFixed(1)}%</p>
-                      </div>
-                    </div>
-                  </div>
+              {!ehAtual && (
+                <CardFooter className="border-tinta/10 bg-transparent">
+                  {recomendado ? (
+                    <ShimmerButton
+                      onClick={() => escolherPlano(p.id)}
+                      disabled={trocando === p.id}
+                      background="rgb(var(--color-acento))"
+                      shimmerColor="#ffffff"
+                      className="w-full text-sm font-semibold"
+                    >
+                      {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
+                    </ShimmerButton>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      variant="secondary"
+                      onClick={() => escolherPlano(p.id)}
+                      disabled={trocando === p.id}
+                    >
+                      {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
+                    </Button>
+                  )}
+                </CardFooter>
+              )}
+            </Card>
+          );
+        })}
+      </div>
 
-                  <div>
-                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Projeção com o faturamento simulado
-                    </p>
-                    <div className="flex items-center justify-between border-t border-border pt-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          {fmt(p.valorTaxa)} de taxa + {p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)} de mensalidade
-                        </p>
-                        <p className="drx-serif text-2xl font-medium text-primary">
-                          R$ <NumberTicker value={p.total} className="text-primary" />
-                          <span className="drx-serif text-sm font-normal text-muted-foreground"> /mês*</span>
-                        </p>
-                      </div>
-                      <span className="rounded-lg bg-secondary px-3 py-1.5 text-sm font-semibold">
-                        {efetivo.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-
-                {!ehAtual && (
-                  <CardFooter>
-                    {recomendado ? (
-                      <ShimmerButton
-                        onClick={() => escolherPlano(p.id)}
-                        disabled={trocando === p.id}
-                        background="#d4af6a"
-                        shimmerColor="#ffffff"
-                        className="w-full text-sm font-semibold text-background"
-                      >
-                        {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
-                      </ShimmerButton>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        variant="secondary"
-                        onClick={() => escolherPlano(p.id)}
-                        disabled={trocando === p.id}
-                      >
-                        {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
-                      </Button>
-                    )}
-                  </CardFooter>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Aviso */}
-        <div className="flex items-start gap-2 rounded-xl bg-card px-4 py-3 ring-1 ring-border">
-          <span className="text-muted-foreground">ⓘ</span>
-          <p className="text-xs text-muted-foreground">
-            Mensalidade e taxa são os valores fixos de cada plano. O total mostrado é uma projeção com base no
-            faturamento simulado acima — o valor real muda conforme suas vendas no mês.
-          </p>
-        </div>
+      {/* Aviso */}
+      <div className="flex items-start gap-2 rounded-xl bg-superficie px-4 py-3 ring-1 ring-tinta/10">
+        <span className="text-tinta-suave">ⓘ</span>
+        <p className="text-xs text-tinta-suave">
+          Mensalidade e taxa são os valores fixos de cada plano. O total mostrado é uma projeção com base no
+          faturamento simulado acima — o valor real muda conforme suas vendas no mês.
+        </p>
       </div>
     </div>
   );

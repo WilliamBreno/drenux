@@ -163,10 +163,11 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 			precoUnit := produto.Preco
 			variacaoNome := ""
 
-			if len(produto.Variacoes) > 0 {
-				if itemInput.VariacaoID == nil {
-					return fmt.Errorf("produto %q exige a escolha de uma variação", produto.Nome)
-				}
+			// Escolher uma variação é opcional pro cliente, mesmo quando o
+			// produto tem variações cadastradas — sem variação escolhida,
+			// usa o preço/estoque base do próprio produto (mesmo caminho
+			// de quem nunca teve variação nenhuma).
+			if itemInput.VariacaoID != nil {
 				variacao, err := variacaoRepo.BuscarPorID(*itemInput.VariacaoID)
 				if err != nil || variacao.ProdutoID != produto.ID {
 					return fmt.Errorf("variação inválida pro produto %q", produto.Nome)

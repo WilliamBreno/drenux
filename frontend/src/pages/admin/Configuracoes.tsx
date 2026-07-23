@@ -11,6 +11,7 @@ import { TEMAS } from '../../themes';
 import { Campo } from '../../components/Campo';
 import { QRCodeCardapio } from '../../components/QRCodeCardapio';
 import { EnderecoCampos, enderecoVazio, enderecoParaTexto, enderecoPreenchido, type EnderecoValor } from '../../components/EnderecoCampos';
+import { rotuloCatalogo } from '../../lib/utils';
 
 const MARGENS = [0, 5, 10, 15, 20, 25, 30];
 
@@ -459,7 +460,7 @@ export function Configuracoes() {
         {/* Seletor de tema */}
         <div className="space-y-3">
           <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">
-            Tema do cardápio
+            Tema do {rotuloCatalogo(loja?.segmento_principal)}
           </p>
           <div className="grid grid-cols-4 gap-2">
             {TEMAS.map((t) => (
@@ -501,7 +502,7 @@ export function Configuracoes() {
           {mutSalvar.isPending ? 'Salvando...' : 'Salvar'}
         </button>
       </form>
-      {loja && <QRCodeCardapio slug={loja.slug} nomeLoja={loja.nome} />}
+      {loja && <QRCodeCardapio slug={loja.slug} nomeLoja={loja.nome} segmentoLoja={loja.segmento_principal} />}
     </div>
   );
 }

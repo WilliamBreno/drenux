@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { cadastrar } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import { Campo } from '../components/Campo';
+import { rotuloCatalogo } from '../lib/utils';
 
 const NOMES_PLANO: Record<string, string> = {
   start: 'Start',
@@ -59,7 +60,7 @@ export function Cadastro() {
       >
         <div className="text-center">
           <h1 className="font-display text-2xl tracking-wide text-tinta">Crie sua loja</h1>
-          <p className="mt-1 text-sm text-tinta-suave">Seu cardápio online em poucos minutos</p>
+          <p className="mt-1 text-sm text-tinta-suave">Seu {rotuloCatalogo(segmento)} online em poucos minutos</p>
         </div>
 
         {planoConfirmado && NOMES_PLANO[planoConfirmado] && (

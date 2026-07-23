@@ -1,8 +1,9 @@
 import type { ChangeEvent } from 'react';
-import type { Categoria, Subcategoria, GrupoCor } from '../../api/types';
+import type { Categoria, Subcategoria, GrupoCor, TipoProduto } from '../../api/types';
 import type { ProdutoInput } from '../../api/admin';
 import { Campo } from '../Campo';
 import { logoMiniatura } from '../../api/upload';
+import { rotuloCatalogo } from '../../lib/utils';
 
 interface Props {
   form: ProdutoInput;
@@ -12,12 +13,15 @@ interface Props {
   gruposCor?: GrupoCor[];
   enviandoFoto: boolean;
   onSelecionarFoto: (e: ChangeEvent<HTMLInputElement>) => void;
+  // Segmento da LOJA (não do produto) — decide se o rótulo da página
+  // pública é "cardápio" ou "catálogo" (ver Fase 3.4, CatalogoGrid).
+  segmentoLoja?: TipoProduto;
 }
 
 // Campos do formulário de produto — usado tanto na edição/criação inline
 // (Produtos.tsx) quanto no wizard de cadastro em massa, pra não duplicar
 // essa lógica nos dois lugares.
-export function ProdutoFormFields({ form, onChange, categorias, subcategorias, gruposCor, enviandoFoto, onSelecionarFoto }: Props) {
+export function ProdutoFormFields({ form, onChange, categorias, subcategorias, gruposCor, enviandoFoto, onSelecionarFoto, segmentoLoja }: Props) {
   // Subcategoria/Grupo de Cor são exclusivos do segmento "mercadoria" e
   // formam uma cadeia — trocar a categoria ou a subcategoria limpa o que
   // vinha "embaixo" na hierarquia, pra nunca ficar um produto com
@@ -85,7 +89,12 @@ export function ProdutoFormFields({ form, onChange, categorias, subcategorias, g
         </Campo>
         {form.tipo_produto === 'mercadoria' && (
           <Campo label="Peso (g)" className="flex-1">
-            <input type="number" min="1" required value={form.peso_gramas ?? ''} onChange={(e) => onChange({ ...form, peso_gramas: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Ex: 300" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
+            {/* Sem `required`: o campo fica opcional enquanto o lojista
+                preenche o formulário — a checagem (obrigatório pra
+                mercadoria) só acontece no envio, via validação em JS, pra
+                mostrar a mensagem amigável em vez do aviso nativo do
+                navegador. */}
+            <input type="number" min="1" value={form.peso_gramas ?? ''} onChange={(e) => onChange({ ...form, peso_gramas: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Ex: 300" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
           </Campo>
         )}
       </div>
@@ -109,7 +118,7 @@ export function ProdutoFormFields({ form, onChange, categorias, subcategorias, g
 
       <label className="flex items-center gap-2 text-sm text-tinta">
         <input type="checkbox" checked={form.disponivel} onChange={(e) => onChange({ ...form, disponivel: e.target.checked })} className="h-4 w-4 accent-acento" />
-        Disponível no cardápio
+        Disponível no {rotuloCatalogo(segmentoLoja)}
       </label>
 
       {/* Estoque */}

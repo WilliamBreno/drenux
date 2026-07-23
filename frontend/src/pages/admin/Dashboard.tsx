@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { buscarLoja } from '../../api/admin';
 import { useAuthStore } from '../../store/authStore';
+import { rotuloCatalogo } from '../../lib/utils';
 
 const linksBase = [
   { to: '/admin', label: 'Início' },
@@ -44,7 +45,7 @@ export function Dashboard() {
               rel="noreferrer"
               className="text-xs text-acento hover:underline"
             >
-              Ver cardápio público ↗
+              Ver {rotuloCatalogo(loja?.segmento_principal)} público ↗
             </a>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Produto, VariacaoProduto } from "../api/types"
+import type { Produto, TipoProduto, VariacaoProduto } from "../api/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -13,4 +13,12 @@ export function precoItem(produto: Produto, variacao?: VariacaoProduto | null): 
   if (!variacao) return produto.preco
   if (variacao.modo_preco === 'absoluto') return variacao.preco_adicional
   return produto.preco + variacao.preco_adicional
+}
+
+// rotuloCatalogo decide a palavra usada nas telas do admin pra se referir
+// à página pública da loja: lojas "mercadoria" usam o layout de e-commerce
+// (ver CatalogoGrid) e por isso são chamadas de "catálogo"; "alimenticio"
+// mantém "cardápio", nome histórico do produto.
+export function rotuloCatalogo(segmento?: TipoProduto): string {
+  return segmento === 'mercadoria' ? 'catálogo' : 'cardápio'
 }

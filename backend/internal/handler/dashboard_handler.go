@@ -83,6 +83,37 @@ func (h *FotoHandler) Adicionar(c *gin.Context) {
 	c.JSON(http.StatusCreated, foto)
 }
 
+// Reordenar atende PUT /admin/fotos/:produtoId/reordenar — recebe a lista
+// de IDs na nova ordem desejada e aplica; a primeira da lista vira a
+// "principal" (menor Ordem), consistente com o critério já usado em
+// ListarPorProduto (Order("ordem, id")).
+func (h *FotoHandler) Reordenar(c *gin.Context) {
+	lojaID := c.GetUint("loja_id")
+	produtoID, err := strconv.ParseUint(c.Param("produtoId"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "produto_id inválido"})
+		return
+	}
+	if !h.validarDono(lojaID, uint(produtoID)) {
+		c.JSON(http.StatusForbidden, gin.H{"erro": "produto não encontrado"})
+		return
+	}
+
+	var req struct {
+		IDs []uint `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+
+	if err := h.fotoRepo.ReordenarTodas(uint(produtoID), req.IDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h *FotoHandler) Deletar(c *gin.Context) {
 	lojaID := c.GetUint("loja_id")
 	produtoID, err := strconv.ParseUint(c.Param("produtoId"), 10, 64)

@@ -1,16 +1,19 @@
 import type { VariacaoInput } from '../../api/admin';
+import type { TipoProduto } from '../../api/types';
 import { Campo } from '../Campo';
+import { rotuloCatalogo } from '../../lib/utils';
 
 interface Props {
   form: VariacaoInput;
   onChange: (form: VariacaoInput) => void;
+  segmentoLoja?: TipoProduto;
 }
 
 // Campos do formulário de variação — usado na edição inline (Produtos.tsx)
 // e no wizard de cadastro em massa. Não inclui a seção de fotos (só faz
 // sentido depois que a variação já existe, com um variacaoId de verdade) —
 // isso fica por conta de cada tela que usa este componente.
-export function VariacaoFormFields({ form, onChange }: Props) {
+export function VariacaoFormFields({ form, onChange, segmentoLoja }: Props) {
   return (
     <>
       <Campo label="Modo de preço">
@@ -58,7 +61,7 @@ export function VariacaoFormFields({ form, onChange }: Props) {
       </label>
       <label className="flex items-center gap-2 text-xs text-tinta">
         <input type="checkbox" checked={form.mostrar_valor_adicional} onChange={(e) => onChange({ ...form, mostrar_valor_adicional: e.target.checked })} className="h-3.5 w-3.5 accent-acento" />
-        Mostrar o preço desta opção pro cliente no cardápio
+        Mostrar o preço desta opção pro cliente no {rotuloCatalogo(segmentoLoja)}
       </label>
     </>
   );
