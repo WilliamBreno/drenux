@@ -166,7 +166,7 @@ export function MeuPlano() {
                         {fmt(p.valorTaxa)} de taxa + {p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)} de mensalidade
                       </p>
                       <p className="font-carimbo text-xl font-semibold text-tinta">
-                        R$ <NumberTicker value={p.total} className="text-tinta" />
+                        R$ <NumberTicker value={p.total} className="text-tinta-suave" />
                         <span className="text-sm font-normal text-tinta-suave"> /mês*</span>
                       </p>
                     </div>
@@ -183,7 +183,7 @@ export function MeuPlano() {
                     type="button"
                     onClick={() => escolherPlano(p.id)}
                     disabled={trocando === p.id}
-                    className="w-full rounded-full bg-acento px-4 py-2 text-sm font-semibold text-tinta-suave transition hover:bg-acento/90 disabled:opacity-60"
+                    className="w-full rounded-full bg-acento px-4 py-2 text-sm font-semibold text-tinta transition hover:bg-acento/90 disabled:opacity-60"
                   >
                     {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
                   </button>
