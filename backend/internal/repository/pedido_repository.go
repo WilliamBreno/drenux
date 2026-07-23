@@ -74,6 +74,10 @@ func (r *PedidoRepository) AtualizarStripeSessionID(pedidoID uint, sessionID str
 	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Update("stripe_session_id", sessionID).Error
 }
 
+func (r *PedidoRepository) AtualizarMercadoPagoPreferenceID(pedidoID uint, preferenceID string) error {
+	return r.db.Model(&domain.Pedido{}).Where("id = ?", pedidoID).Update("mercado_pago_preference_id", preferenceID).Error
+}
+
 // AtualizarStatusEntrega muda o progresso da entrega ("saiu_para_entrega"
 // ou "entregue"). Chamado pelo dono/motoboy no painel admin.
 func (r *PedidoRepository) AtualizarStatusEntrega(pedidoID uint, statusEntrega string) error {

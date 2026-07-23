@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   buscarLoja,
   atualizarConfiguracoes,
-  statusStripe,
-  iniciarOnboardingStripe,
+  statusMercadoPago,
+  iniciarOnboardingMercadoPago,
 } from '../../api/admin';
 import { enviarImagem, logoMiniatura } from '../../api/upload';
 import { TEMAS } from '../../themes';
@@ -19,7 +19,7 @@ export function Configuracoes() {
   const queryClient = useQueryClient();
 
   const { data: loja, isLoading } = useQuery({ queryKey: ['loja'], queryFn: buscarLoja });
-  const { data: stripeStatus } = useQuery({ queryKey: ['stripe-status'], queryFn: statusStripe });
+  const { data: mercadoPagoStatus } = useQuery({ queryKey: ['mercadopago-status'], queryFn: statusMercadoPago });
 
   const [whatsapp, setWhatsapp] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
@@ -44,7 +44,7 @@ export function Configuracoes() {
   const [tema, setTema] = useState('kraft');
   const [salvo, setSalvo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [conectandoStripe, setConectandoStripe] = useState(false);
+  const [conectandoMercadoPago, setConectandoMercadoPago] = useState(false);
   const [enviandoLogo, setEnviandoLogo] = useState(false);
   const [erroLogo, setErroLogo] = useState<string | null>(null);
 
@@ -131,13 +131,13 @@ export function Configuracoes() {
     }
   }
 
-  async function conectarStripe() {
-    setConectandoStripe(true);
+  async function conectarMercadoPago() {
+    setConectandoMercadoPago(true);
     try {
-      const { url } = await iniciarOnboardingStripe();
+      const { url } = await iniciarOnboardingMercadoPago();
       window.location.href = url;
     } catch {
-      setConectandoStripe(false);
+      setConectandoMercadoPago(false);
     }
   }
 
@@ -157,20 +157,20 @@ export function Configuracoes() {
       <section className="rounded-2xl bg-superficie p-5 shadow-sm">
         <h2 className="font-display text-lg tracking-wide text-tinta">Pagamento</h2>
         <p className="mt-1 text-sm text-tinta-suave">
-          A Stripe processa os pagamentos e te paga direto.
+          O Mercado Pago processa os pagamentos dos seus pedidos e te paga direto na sua conta.
         </p>
         <div className="mt-4 flex items-center justify-between rounded-xl bg-fundo px-4 py-3">
           <span className="text-sm font-medium text-tinta">
-            {stripeStatus?.stripe_conectado ? 'Conta conectada' : 'Conta não conectada'}
+            {mercadoPagoStatus?.mercadopago_conectado ? 'Conta conectada' : 'Conta não conectada'}
           </span>
-          <span className={`h-2.5 w-2.5 rounded-full ${stripeStatus?.stripe_conectado ? 'bg-emerald-500' : 'bg-tinta/20'}`} />
+          <span className={`h-2.5 w-2.5 rounded-full ${mercadoPagoStatus?.mercadopago_conectado ? 'bg-emerald-500' : 'bg-tinta/20'}`} />
         </div>
         <button
-          onClick={conectarStripe}
-          disabled={conectandoStripe}
+          onClick={conectarMercadoPago}
+          disabled={conectandoMercadoPago}
           className="mt-4 rounded-full bg-acento px-4 py-2 text-sm font-semibold text-superficie disabled:opacity-60"
         >
-          {conectandoStripe ? 'Abrindo...' : stripeStatus?.stripe_conectado ? 'Revisar dados na Stripe' : 'Conectar conta de pagamento'}
+          {conectandoMercadoPago ? 'Abrindo...' : mercadoPagoStatus?.mercadopago_conectado ? 'Revisar dados no Mercado Pago' : 'Conectar conta de pagamento'}
         </button>
       </section>
 

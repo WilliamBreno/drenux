@@ -100,7 +100,7 @@ export function MeuPlano() {
             {dashboard ? 'Faturamento do mês (ajuste pra simular outros cenários)' : 'Simule seu faturamento mensal'}
           </CardDescription>
           <CardTitle className="font-carimbo text-2xl font-semibold text-acento">
-            R$ <NumberTicker value={faturamentoUsado} className="text-tinta" />
+            R$ <NumberTicker value={faturamentoUsado} className="text-tinta dark:text-tinta" />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -166,7 +166,7 @@ export function MeuPlano() {
                         {fmt(p.valorTaxa)} de taxa + {p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)} de mensalidade
                       </p>
                       <p className="font-carimbo text-xl font-semibold text-tinta">
-                        R$ <NumberTicker value={p.total} className="text-black" />
+                        R$ <NumberTicker value={p.total} className="text-tinta dark:text-tinta" />
                         <span className="text-sm font-normal text-tinta-suave"> /mês*</span>
                       </p>
                     </div>

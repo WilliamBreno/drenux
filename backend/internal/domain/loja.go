@@ -57,6 +57,19 @@ type Loja struct {
 	// define o tipo padrão de produtos novos e o fluxo de catálogo sugerido.
 	SegmentoPrincipal TipoProduto `gorm:"size:20;default:'alimenticio'" json:"segmento_principal"`
 
+	// Dados da conexão OAuth da loja com o Mercado Pago (ver
+	// docs/plano-melhorias-drenux.md, Fase 5) — usados pra criar cobranças
+	// de pedido em nome da própria loja (split via marketplace_fee), no
+	// lugar da conta Connect da Stripe. MercadoPagoUserID é o collector_id
+	// devolvido pelo OAuth, usado pra achar a loja dona de um pagamento
+	// quando o webhook chega. Token válido por 6 meses — MercadoPagoTokenExpiraEm
+	// permite renovar via refresh_token antes de vencer (ver cmd/api rotina
+	// de renovação).
+	MercadoPagoAccessToken   string     `gorm:"size:255" json:"-"`
+	MercadoPagoRefreshToken  string     `gorm:"size:255" json:"-"`
+	MercadoPagoUserID        string     `gorm:"size:50;index" json:"-"`
+	MercadoPagoTokenExpiraEm *time.Time `json:"-"`
+
 	AfiliadoID *uint `gorm:"index" json:"-"`
 
 	CreatedAt time.Time `json:"created_at"`

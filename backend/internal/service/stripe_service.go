@@ -49,9 +49,10 @@ type StripeService struct {
 	notificationSender notification.NotificationSender
 	emailSender        *notification.EmailSender
 	frontendURL        string
+	posPagamento       *PosPagamentoService
 }
 
-func NewStripeService(secretKey, webhookSecret string, db *gorm.DB, notificationSender notification.NotificationSender, emailSender *notification.EmailSender, frontendURL string) *StripeService {
+func NewStripeService(secretKey, webhookSecret string, db *gorm.DB, notificationSender notification.NotificationSender, emailSender *notification.EmailSender, frontendURL string, posPagamento *PosPagamentoService) *StripeService {
 	return &StripeService{
 		client:             stripe.NewClient(secretKey),
 		secretKey:          secretKey,
@@ -65,6 +66,7 @@ func NewStripeService(secretKey, webhookSecret string, db *gorm.DB, notification
 		notificationSender: notificationSender,
 		emailSender:        emailSender,
 		frontendURL:        frontendURL,
+		posPagamento:       posPagamento,
 	}
 }
 
@@ -759,60 +761,9 @@ func (s *StripeService) processarPosPagamento(pedidoID uint) {
 		s.transferirComissaoAfiliado(pedido, loja)
 	}
 
-	produtoRepo := repository.NewProdutoRepository(s.db)
-
-	var estoqueErr error
-	_ = estoqueErr
-	for _, item := range pedido.Itens {
-		var restante int
-		var alerta bool
-		var nomeItem string
-
-		if item.VariacaoID != nil {
-			variacaoRepo := repository.NewVariacaoRepository(s.db)
-			restante, estoqueErr = variacaoRepo.SubtrairEstoque(*item.VariacaoID, item.Quantidade)
-			if estoqueErr != nil {
-				log.Printf("erro ao subtrair estoque da variação %d: %v", *item.VariacaoID, estoqueErr)
-				continue
-			}
-			if restante < 0 {
-				continue
-			}
-			v, emAlerta := variacaoRepo.BuscarEstoqueAlerta(*item.VariacaoID)
-			if emAlerta {
-				alerta = true
-				nomeItem = fmt.Sprintf("%s (%s)", item.ProdutoNome, v.Nome)
-			}
-		} else {
-			restante, estoqueErr = produtoRepo.SubtrairEstoque(item.ProdutoID, item.Quantidade)
-			if estoqueErr != nil {
-				log.Printf("erro ao subtrair estoque do produto %d: %v", item.ProdutoID, estoqueErr)
-				continue
-			}
-			if restante < 0 {
-				continue
-			}
-			_, emAlerta := produtoRepo.BuscarEstoqueAlerta(item.ProdutoID)
-			if emAlerta {
-				alerta = true
-				nomeItem = item.ProdutoNome
-			}
-		}
-
-		if alerta && s.notificationSender != nil && loja.WhatsappNumero != "" {
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			aviso := fmt.Sprintf("⚠️ Alerta de estoque — %s\n\nO produto *%s* chegou a %d unidade(s) restante(s).", loja.Nome, nomeItem, restante)
-			if restante == 0 {
-				aviso = fmt.Sprintf("⚠️ Estoque esgotado — %s\n\nO produto *%s* acabou e foi marcado como indisponível automaticamente.", loja.Nome, nomeItem)
-			}
-			if err := s.notificationSender.EnviarNotificacaoAdmin(ctx, pedido, aviso, loja.WhatsappNumero); err != nil {
-				log.Printf("falha ao enviar alerta de estoque: %v", err)
-			}
-			cancel()
-		}
-	}
-
-	s.notificarPagamento(pedidoID)
+	// Estoque e notificações são compartilhados com o Mercado Pago — ver
+	// PosPagamentoService.
+	s.posPagamento.ProcessarPedidoPago(pedidoID)
 }
 
 func (s *StripeService) transferirComissaoAfiliado(pedido *domain.Pedido, loja *domain.Loja) {
@@ -864,39 +815,4 @@ func (s *StripeService) transferirComissaoAfiliado(pedido *domain.Pedido, loja *
 	if err := s.pedidoRepo.AtualizarComissaoAfiliado(pedido.ID, valorComissao, transfer.ID); err != nil {
 		log.Printf("aviso: não foi possível salvar registro de comissão do pedido %d: %v", pedido.ID, err)
 	}
-}
-
-func (s *StripeService) notificarPagamento(pedidoID uint) {
-	if s.notificationSender == nil {
-		log.Printf("WhatsApp não conectado — pedido %d foi pago mas a notificação foi pulada", pedidoID)
-		return
-	}
-
-	pedido, err := s.pedidoRepo.BuscarPorID(pedidoID)
-	if err != nil {
-		log.Printf("não foi possível recarregar pedido %d pra notificar: %v", pedidoID, err)
-		return
-	}
-
-	loja, err := s.lojaRepo.BuscarPorID(pedido.LojaID)
-	if err != nil {
-		log.Printf("não foi possível carregar loja do pedido %d pra notificar: %v", pedidoID, err)
-		return
-	}
-
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := s.notificationSender.EnviarConfirmacaoPedido(ctx, pedido, loja.Nome); err != nil {
-			log.Printf("falha ao notificar cliente do pedido %d: %v", pedido.ID, err)
-		}
-	}()
-
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := s.notificationSender.EnviarNotificacaoAdmin(ctx, pedido, loja.Nome, loja.WhatsappNumero); err != nil {
-			log.Printf("falha ao notificar admin do pedido %d: %v", pedido.ID, err)
-		}
-	}()
 }

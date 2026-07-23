@@ -216,7 +216,7 @@ export async function deletarFotoVariacao(produtoId: number, variacaoId: number,
   await api.delete(`/admin/variacoes/${produtoId}/${variacaoId}/fotos/${fotoId}`);
 }
 
-// Stripe
+// Stripe (mantido só pra assinatura de plano — pedido migrou pro Mercado Pago, ver Fase 5)
 export async function iniciarOnboardingStripe(): Promise<{ url: string }> {
   const { data } = await api.post<{ url: string }>('/admin/stripe/onboarding');
   return data;
@@ -224,6 +224,17 @@ export async function iniciarOnboardingStripe(): Promise<{ url: string }> {
 
 export async function statusStripe(): Promise<{ stripe_conectado: boolean }> {
   const { data } = await api.get<{ stripe_conectado: boolean }>('/admin/stripe/status');
+  return data;
+}
+
+// Mercado Pago — conexão da loja pra receber pagamento de pedido (Fase 5)
+export async function iniciarOnboardingMercadoPago(): Promise<{ url: string }> {
+  const { data } = await api.get<{ url: string }>('/admin/mercadopago/onboarding');
+  return data;
+}
+
+export async function statusMercadoPago(): Promise<{ mercadopago_conectado: boolean }> {
+  const { data } = await api.get<{ mercadopago_conectado: boolean }>('/admin/mercadopago/status');
   return data;
 }
 

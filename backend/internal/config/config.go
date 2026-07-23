@@ -18,8 +18,23 @@ type Config struct {
 	StripeWebhookSecret string
 	FrontendURLs        []string
 	CronSecret          string
-	ResendAPIKey    string
-	EmailRemetente  string
+	ResendAPIKey        string
+	EmailRemetente      string
+
+	// Credenciais da aplicação Mercado Pago (marketplace) — usadas pro
+	// OAuth de conexão da loja (Fase 5 do roadmap, ver
+	// docs/plano-melhorias-drenux.md). MercadoPagoWebhookSecret é a chave
+	// secreta configurada no painel do Mercado Pago pra validar a
+	// assinatura (header x-signature) das notificações de pagamento.
+	MercadoPagoClientID      string
+	MercadoPagoClientSecret  string
+	MercadoPagoWebhookSecret string
+
+	// APIPublicURL é o endereço público desta própria API (não o do
+	// frontend) — precisa bater exatamente com o redirect_uri cadastrado
+	// na aplicação do Mercado Pago, já que é pra cá que o OAuth redireciona
+	// o navegador depois da autorização (GET /admin/mercadopago/callback).
+	APIPublicURL string
 }
 
 func Load() *Config {
@@ -43,10 +58,15 @@ func Load() *Config {
 		// Padrão já bate com a porta do Vite em desenvolvimento — quando
 		// fizer o deploy do frontend (Vercel), define essa variável com
 		// a URL real em produção.
-		FrontendURLs: frontendURLs,
-		CronSecret:   getEnv("CRON_SECRET", ""),
+		FrontendURLs:   frontendURLs,
+		CronSecret:     getEnv("CRON_SECRET", ""),
 		ResendAPIKey:   getEnv("RESEND_API_KEY", ""),
 		EmailRemetente: getEnv("EMAIL_REMETENTE", "Drenux <naoresponda@drenux.com.br>"),
+
+		MercadoPagoClientID:      getEnv("MERCADOPAGO_CLIENT_ID", ""),
+		MercadoPagoClientSecret:  getEnv("MERCADOPAGO_CLIENT_SECRET", ""),
+		MercadoPagoWebhookSecret: getEnv("MERCADOPAGO_WEBHOOK_SECRET", ""),
+		APIPublicURL:             getEnv("API_PUBLIC_URL", "http://localhost:8080"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -63,6 +83,14 @@ func Load() *Config {
 
 	if cfg.StripeWebhookSecret == "" {
 		log.Println("aviso: STRIPE_WEBHOOK_SECRET não definida — o webhook vai rejeitar todos os eventos")
+	}
+
+	if cfg.MercadoPagoClientID == "" || cfg.MercadoPagoClientSecret == "" {
+		log.Println("aviso: MERCADOPAGO_CLIENT_ID/MERCADOPAGO_CLIENT_SECRET não definidas — onboarding de pagamento via Mercado Pago vai falhar")
+	}
+
+	if cfg.MercadoPagoWebhookSecret == "" {
+		log.Println("aviso: MERCADOPAGO_WEBHOOK_SECRET não definida — o webhook do Mercado Pago vai rejeitar todas as notificações")
 	}
 
 	return cfg

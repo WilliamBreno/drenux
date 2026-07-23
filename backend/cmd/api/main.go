@@ -106,11 +106,25 @@ func main() {
 		cfg.FrontendURLs[0],
 	)
 
+	// posPagamentoService concentra estoque + notificação pós-pagamento —
+	// compartilhado entre Stripe (assinatura, frete) e Mercado Pago
+	// (pedido, ver Fase 5 do roadmap) pra não duplicar essa lógica.
+	posPagamentoService := service.NewPosPagamentoService(db, whatsappSender)
+
 	// StripeService agora também recebe emailSender e frontendURL — usados
 	// pro fluxo de assinatura de plano (Pro/Scale).
-	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender, emailSender, cfg.FrontendURLs[0])
+	stripeService := service.NewStripeService(cfg.StripeSecretKey, cfg.StripeWebhookSecret, db, whatsappSender, emailSender, cfg.FrontendURLs[0], posPagamentoService)
 	stripeHandler := handler.NewStripeHandler(stripeService, cfg.FrontendURLs[0])
 	planoHandler := handler.NewPlanoHandler(stripeService)
+
+	// MercadoPagoService assume o checkout de PEDIDO (não o de assinatura
+	// de plano, que continua na Stripe) — ver Fase 5 do roadmap em
+	// docs/plano-melhorias-drenux.md.
+	mercadoPagoService := service.NewMercadoPagoService(
+		cfg.MercadoPagoClientID, cfg.MercadoPagoClientSecret, cfg.MercadoPagoWebhookSecret,
+		cfg.JWTSecret, cfg.APIPublicURL, cfg.FrontendURLs[0], db, posPagamentoService,
+	)
+	mercadoPagoHandler := handler.NewMercadoPagoHandler(mercadoPagoService, cfg.FrontendURLs[0], cfg.CronSecret)
 
 	lojaHandler := handler.NewLojaHandler(lojaService, distanciaService)
 
@@ -159,7 +173,11 @@ func main() {
 		cupomHandler.Validar(c)
 	})
 	router.POST("/lojas/:slug/cotar-frete", freteHandler.Cotar)
-	router.POST("/pedidos/:id/checkout", stripeHandler.Checkout)
+
+	// Checkout de PEDIDO migrou pra Mercado Pago (Fase 5.2 do roadmap) —
+	// o handler/service da Stripe continuam no repositório (usados pra
+	// assinatura de plano e frete), só pararam de ser chamados aqui.
+	router.POST("/pedidos/:id/checkout", mercadoPagoHandler.Checkout)
 
 	router.GET("/lojas/:slug/guardados", guardadosHandler.Listar)
 	router.POST("/lojas/:slug/guardados/cotar-frete", guardadosHandler.CotarFrete)
@@ -168,8 +186,16 @@ func main() {
 	router.POST("/solicitacoes/:id/checkout", stripeHandler.CheckoutFrete)
 
 	router.POST("/webhooks/stripe", stripeHandler.Webhook)
+	router.POST("/webhooks/mercadopago", mercadoPagoHandler.Webhook)
+
+	// Callback do OAuth do Mercado Pago — rota pública de propósito (é o
+	// próprio Mercado Pago que redireciona o navegador do dono pra cá,
+	// sem token de sessão nosso; a identidade da loja vem do "state"
+	// assinado, ver MercadoPagoService.IniciarOnboarding).
+	router.GET("/admin/mercadopago/callback", mercadoPagoHandler.Callback)
 
 	router.POST("/relatorio/semanal", relatorioHandler.EnviarSemanal)
+	router.POST("/mercadopago/renovar-tokens", mercadoPagoHandler.RenovarTokens)
 
 	admin := router.Group("/admin")
 	admin.Use(middleware.AuthRequired(cfg.JWTSecret))
@@ -231,6 +257,9 @@ func main() {
 
 	admin.POST("/stripe/onboarding", stripeHandler.IniciarOnboarding)
 	admin.GET("/stripe/status", stripeHandler.Status)
+
+	admin.GET("/mercadopago/onboarding", mercadoPagoHandler.IniciarOnboarding)
+	admin.GET("/mercadopago/status", mercadoPagoHandler.Status)
 
 	admin.GET("/loja", lojaHandler.Buscar)
 	admin.PUT("/loja", lojaHandler.AtualizarConfiguracoes)

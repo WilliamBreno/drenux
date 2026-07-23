@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 	"gorm.io/gorm"
 )
@@ -45,6 +47,42 @@ func (r *LojaRepository) BuscarPorStripeSubscriptionID(subscriptionID string) (*
 
 func (r *LojaRepository) AtualizarStripeAccountID(lojaID uint, stripeAccountID string) error {
 	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Update("stripe_account_id", stripeAccountID).Error
+}
+
+// AtualizarMercadoPago salva os dados da conexão OAuth da loja com o
+// Mercado Pago — chamado tanto na conexão inicial quanto na renovação de
+// token (que troca access/refresh token e empurra a expiração pra frente).
+func (r *LojaRepository) AtualizarMercadoPago(lojaID uint, accessToken, refreshToken, userID string, expiraEm time.Time) error {
+	return r.db.Model(&domain.Loja{}).Where("id = ?", lojaID).Updates(map[string]interface{}{
+		"mercado_pago_access_token":    accessToken,
+		"mercado_pago_refresh_token":   refreshToken,
+		"mercado_pago_user_id":         userID,
+		"mercado_pago_token_expira_em": expiraEm,
+	}).Error
+}
+
+// BuscarPorMercadoPagoUserID é usado pelo webhook do Mercado Pago pra
+// achar de qual loja é um pagamento — a notificação identifica o
+// vendedor pelo "collector_id" (aqui salvo como MercadoPagoUserID), não
+// por um ID nosso.
+func (r *LojaRepository) BuscarPorMercadoPagoUserID(userID string) (*domain.Loja, error) {
+	var loja domain.Loja
+	if err := r.db.Where("mercado_pago_user_id = ?", userID).First(&loja).Error; err != nil {
+		return nil, err
+	}
+	return &loja, nil
+}
+
+// ListarComMercadoPagoExpirandoAte devolve as lojas conectadas ao Mercado
+// Pago cujo token expira até o instante informado — usado pela rotina de
+// renovação automática (Fase 5.4) pra renovar antes do vencimento, não
+// depois.
+func (r *LojaRepository) ListarComMercadoPagoExpirandoAte(limite time.Time) ([]domain.Loja, error) {
+	var lojas []domain.Loja
+	if err := r.db.Where("mercado_pago_user_id != ? AND mercado_pago_token_expira_em <= ?", "", limite).Find(&lojas).Error; err != nil {
+		return nil, err
+	}
+	return lojas, nil
 }
 
 // AtualizarPlano aplica uma troca de plano imediatamente (upgrade ou
