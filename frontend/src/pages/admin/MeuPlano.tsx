@@ -4,9 +4,7 @@ import { buscarLoja, buscarDashboard, mudarPlano, cancelarMudancaAgendada } from
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Button } from '@/components/ui/button';
 import { NumberTicker } from '@/components/ui/number-ticker';
-import { ShimmerButton } from '@/components/ui/shimmer-button';
 import { PLANOS, custoPlano } from '../../lib/planos';
 
 const NOME_PLANO: Record<string, string> = { start: 'Start', pro: 'Pro', scale: 'Scale' };
@@ -82,9 +80,14 @@ export function MeuPlano() {
               <p className="text-sm text-tinta">
                 Você vai mudar pro plano <strong>{NOME_PLANO[loja.plano_agendado]}</strong> na próxima renovação.
               </p>
-              <Button size="sm" variant="outline" onClick={desfazerAgendamento} disabled={cancelando}>
+              <button
+                type="button"
+                onClick={desfazerAgendamento}
+                disabled={cancelando}
+                className="rounded-full border border-tinta/20 px-3 py-1.5 text-sm font-semibold text-tinta disabled:opacity-60"
+              >
                 {cancelando ? 'Cancelando...' : 'Cancelar'}
-              </Button>
+              </button>
             </div>
           </CardContent>
         )}
@@ -176,26 +179,14 @@ export function MeuPlano() {
 
               {!ehAtual && (
                 <CardFooter className="border-tinta/10 bg-transparent">
-                  {recomendado ? (
-                    <ShimmerButton
-                      onClick={() => escolherPlano(p.id)}
-                      disabled={trocando === p.id}
-                      background="rgb(var(--color-acento))"
-                      shimmerColor="#ffffff"
-                      className="w-full text-sm font-semibold"
-                    >
-                      {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
-                    </ShimmerButton>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="secondary"
-                      onClick={() => escolherPlano(p.id)}
-                      disabled={trocando === p.id}
-                    >
-                      {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
-                    </Button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => escolherPlano(p.id)}
+                    disabled={trocando === p.id}
+                    className="w-full rounded-full bg-acento px-4 py-2 text-sm font-semibold text-tinta transition hover:bg-acento/90 disabled:opacity-60"
+                  >
+                    {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
+                  </button>
                 </CardFooter>
               )}
             </Card>
