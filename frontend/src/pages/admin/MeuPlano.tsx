@@ -183,7 +183,7 @@ export function MeuPlano() {
                     type="button"
                     onClick={() => escolherPlano(p.id)}
                     disabled={trocando === p.id}
-                    className="w-full rounded-full bg-acento px-4 py-2 text-sm font-semibold text-acento transition hover:bg-acento/90 disabled:opacity-60"
+                    className="w-full rounded-full bg-acento px-4 py-2 text-sm font-semibold text-tinta-suave transition hover:bg-acento/90 disabled:opacity-60"
                   >
                     {trocando === p.id ? 'Processando...' : `Mudar pro ${p.nome}`}
                   </button>
