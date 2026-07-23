@@ -166,7 +166,7 @@ export function MeuPlano() {
                         {fmt(p.valorTaxa)} de taxa + {p.mensal === 0 ? 'R$ 0' : fmt(p.mensal)} de mensalidade
                       </p>
                       <p className="font-carimbo text-xl font-semibold text-tinta">
-                        R$ <NumberTicker value={p.total} className="text-tinta-suave" />
+                        R$ <NumberTicker value={p.total} className="text-black" />
                         <span className="text-sm font-normal text-tinta-suave"> /mês*</span>
                       </p>
                     </div>
