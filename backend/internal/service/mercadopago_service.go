@@ -254,18 +254,27 @@ func (s *MercadoPagoService) trocarToken(ctx context.Context, extra map[string]s
 	return &tok, nil
 }
 
-// taxaPlataformaPercentualPedido devolve o mesmo percentual de comissão
-// já usado no checkout Stripe (ver stripe_service.go) — a fórmula de
-// quem paga o quê por plano não muda na migração de processador, só o
-// processador por trás (ver docs/plano-melhorias-drenux.md, Fase 5).
-func taxaPlataformaPercentualPedido(plano string) float64 {
+// pisoComissaoStart é o valor mínimo de comissão no plano Start, protege
+// contra taxa fixa em pedidos de ticket muito baixo (ex: cartão da Mercado
+// Pago, que tem componente fixo de R$0,49 além do percentual).
+const pisoComissaoStart = 2.50
+
+// calcularMarketplaceFee devolve a comissão da Drenux pra um pedido, de
+// acordo com o plano da loja. Start tem piso mínimo; Pro e Scale não.
+// Recebe a base de cálculo já sem a taxa de entrega (ver CriarCheckout) —
+// comissão não incide sobre frete.
+func calcularMarketplaceFee(base float64, plano string) float64 {
 	switch plano {
 	case "pro":
-		return 4.0
+		return math.Round(base*4.0) / 100
 	case "scale":
-		return 1.5
-	default:
-		return TaxaPlataformaPercentual
+		return math.Round(base*1.5) / 100
+	default: // start
+		percentual := math.Round(base*TaxaPlataformaPercentual) / 100
+		if percentual < pisoComissaoStart {
+			return pisoComissaoStart
+		}
+		return percentual
 	}
 }
 
@@ -311,8 +320,11 @@ func (s *MercadoPagoService) CriarCheckout(ctx context.Context, pedidoID uint) (
 		})
 	}
 
-	taxaPercentual := taxaPlataformaPercentualPedido(loja.Plano)
-	marketplaceFee := math.Round(pedido.Total*taxaPercentual) / 100
+	// Comissão não incide sobre a taxa de entrega — pedido.Total já inclui
+	// o frete (ver PedidoService.CriarPorSlug), então a base de cálculo
+	// aqui é só o subtotal dos itens.
+	baseComissao := pedido.Total - pedido.TaxaEntrega
+	marketplaceFee := calcularMarketplaceFee(baseComissao, loja.Plano)
 
 	corpo := map[string]interface{}{
 		"items":              itens,

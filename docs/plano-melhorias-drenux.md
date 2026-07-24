@@ -231,6 +231,34 @@ verdade — 5.5 continua pendente de decisão do William`
 - Frontend: `Configuracoes.tsx`, bloco "Pagamento" trocado de Stripe pra Mercado Pago (mesmo padrão
   visual, `api/admin.ts` com `iniciarOnboardingMercadoPago`/`statusMercadoPago`).
 
+**Correções em `mercadopago_service.go` (24/07/2026), a pedido do William:**
+1. **Piso de R$2,50 no plano Start.** `CriarCheckout` calculava a comissão só como percentual
+   (`TaxaPlataformaPercentual`, hoje 8%), sem aplicar nenhum mínimo. Adicionada
+   `calcularMarketplaceFee` (substitui a antiga `taxaPlataformaPercentualPedido`), que aplica
+   `max(base × 8%, R$2,50)` pro Start; Pro (4%) e Scale (1,5%) continuam só percentuais, sem piso.
+   **Atenção**: apesar do pedido dizer "mesma regra do stripe_service.go", conferi e esse piso **não
+   existe** no `stripe_service.go` — lá a comissão do Start é só o percentual puro
+   (`TaxaPlataformaPercentual = 8.0`), sem `max(..., R$2,50)` em lugar nenhum. Também não é 6,5% como
+   a seção "Contexto do produto" deste documento registra — tanto o backend (`stripe_service.go`)
+   quanto o que já é mostrado pro lojista no frontend (`lib/planos.ts`, `PLANOS[0].taxa = 0.08`) usam
+   8% pro Start hoje. Ou seja: a decisão "Start = 6,5%" registrada na seção de contexto ainda não foi
+   implementada em lugar nenhum do código — só apliquei o piso de R$2,50 sobre a taxa que já existe
+   de fato (8%), sem mudar o percentual. Se a intenção é 6,5% de verdade, isso precisa de mais uma
+   rodada — trocar o `TaxaPlataformaPercentual` e o `PLANOS[0].taxa` do frontend juntos, pra não
+   ficar cobrando um valor e mostrando outro pro lojista.
+2. **Comissão não incide sobre frete.** Confirmado em `pedido_service.go` (`CriarPorSlug`):
+   `pedido.Total = total (subtotal dos itens) + taxaEntrega`, ou seja, **`Total` já inclui o
+   frete**. `CriarCheckout` agora calcula a comissão sobre `pedido.Total - pedido.TaxaEntrega` (só o
+   subtotal dos itens), não mais sobre `pedido.Total` inteiro. Mesma ressalva do item acima: essa
+   exclusão do frete também **não existe** no `stripe_service.go` hoje (nem no checkout de pedido nem
+   no repasse de comissão de afiliado, `transferirComissaoAfiliado`) — ambos ali usam
+   `pedido.Total` cheio, com frete incluído na base de comissão. Não toquei nesses dois pontos da
+   Stripe porque não foi pedido e o checkout de pedido da Stripe está fora de uso desde a Fase 5.2
+   (rota `/pedidos/:id/checkout` migrou pro Mercado Pago) — mas fica registrado que os dois
+   processadores calculariam a comissão de forma diferente se o checkout Stripe voltasse a ser usado
+   pra pedido.
+Validado com `go build ./...`, `go vet ./...` e `gofmt -l`, todos limpos.
+
 **Ressalvas importantes antes de ir pra produção:**
 1. **Nada disso foi testado contra a API real do Mercado Pago** — não há credenciais de sandbox
    nesse ambiente. Antes de confiar: criar a aplicação "drenux-marketplace" no Mercado Pago
