@@ -303,28 +303,43 @@ func (s *MercadoPagoService) CriarCheckout(ctx context.Context, pedidoID uint) (
 	outrasURL := fmt.Sprintf("%s/%s", s.frontendURL, loja.Slug)
 
 	itens := make([]map[string]interface{}, 0, len(pedido.Itens))
+	totalCobrado := 0.0
 	for _, item := range pedido.Itens {
+		precoUnit := math.Round(item.PrecoUnit*100) / 100
+		totalCobrado += precoUnit * float64(item.Quantidade)
 		itens = append(itens, map[string]interface{}{
 			"title":       item.ProdutoNome,
 			"quantity":    item.Quantidade,
-			"unit_price":  math.Round(item.PrecoUnit*100) / 100,
+			"unit_price":  precoUnit,
 			"currency_id": "BRL",
 		})
 	}
 	if pedido.TaxaEntrega > 0 {
+		freteArredondado := math.Round(pedido.TaxaEntrega*100) / 100
+		totalCobrado += freteArredondado
 		itens = append(itens, map[string]interface{}{
 			"title":       "Taxa de entrega",
 			"quantity":    1,
-			"unit_price":  math.Round(pedido.TaxaEntrega*100) / 100,
+			"unit_price":  freteArredondado,
 			"currency_id": "BRL",
 		})
 	}
+	totalCobrado = math.Round(totalCobrado*100) / 100
 
 	// Comissão não incide sobre a taxa de entrega — pedido.Total já inclui
 	// o frete (ver PedidoService.CriarPorSlug), então a base de cálculo
 	// aqui é só o subtotal dos itens.
 	baseComissao := pedido.Total - pedido.TaxaEntrega
 	marketplaceFee := calcularMarketplaceFee(baseComissao, loja.Plano)
+
+	// O Mercado Pago rejeita (invalid_marketplace_fee) se a comissão for
+	// maior que o total da preference — acontece de verdade em pedidos de
+	// ticket baixo no plano Start, cujo piso de R$2,50 sozinho já pode
+	// ultrapassar o total (ex: pedido de R$1). Nesse caso a Drenux fica só
+	// com o total do pedido como comissão, em vez de travar o checkout.
+	if marketplaceFee > totalCobrado {
+		marketplaceFee = totalCobrado
+	}
 
 	corpo := map[string]interface{}{
 		"items":              itens,

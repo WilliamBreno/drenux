@@ -259,6 +259,18 @@ verdade — 5.5 continua pendente de decisão do William`
    pra pedido.
 Validado com `go build ./...`, `go vet ./...` e `gofmt -l`, todos limpos.
 
+**Correção 3 (24/07/2026), achada em teste real com pedido de R$1**: o Mercado Pago recusou o
+checkout com `invalid_marketplace_fee` ("marketplace_fee must not be greater than total amount") —
+o piso de R$2,50 da Correção 1 sozinho já passava do total de um pedido de R$1. `CriarCheckout`
+agora limita `marketplace_fee` ao total realmente cobrado na preference (soma dos itens + frete);
+se o piso ultrapassar isso, a comissão vira só o total do pedido em vez de travar o checkout.
+**Achado à parte, não corrigido**: os itens enviados pro Mercado Pago usam o preço cheio de cada
+item (`item.PrecoUnit`) — se o pedido tiver desconto de cupom aplicado, `pedido.Total` (com
+desconto já subtraído) fica menor que a soma dos itens enviados na preference, cobrando o cliente
+a mais do que o pedido realmente vale. Não toquei nisso porque não foi pedido e não apareceu no
+teste (sem cupom), mas fica registrado — precisa de uma correção própria antes de qualquer loja
+usar cupom com Mercado Pago de verdade.
+
 **Ressalvas importantes antes de ir pra produção:**
 1. **Nada disso foi testado contra a API real do Mercado Pago** — não há credenciais de sandbox
    nesse ambiente. Antes de confiar: criar a aplicação "drenux-marketplace" no Mercado Pago
