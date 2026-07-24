@@ -490,6 +490,64 @@ func (s *MercadoPagoService) ValidarAssinaturaWebhook(signatureHeader, requestID
 // como pago e dispara o pós-processamento (estoque + notificações — ver
 // PosPagamentoService). Repasse de comissão de afiliado ainda não existe
 // pra esse processador (Fase 5.5 em aberto).
+// ProcessarMerchantOrder trata uma notificação "topic=merchant_order" —
+// hoje o tipo de notificação que o Mercado Pago realmente manda pra essa
+// integração (Checkout Pro via preferência), diferente do que a
+// documentação de webhooks "type=payment" sozinha sugere. Uma
+// merchant_order agrupa uma ou mais tentativas de pagamento contra a
+// mesma preferência; busca os pagamentos de dentro dela e delega cada um
+// pro mesmo processamento de sempre (ProcessarNotificacaoPagamento), que
+// já é idempotente (pedido.Status == pago vira no-op).
+func (s *MercadoPagoService) ProcessarMerchantOrder(ctx context.Context, merchantOrderID string) error {
+	tokenApp, err := s.obterTokenAplicacao(ctx)
+	if err != nil {
+		return fmt.Errorf("obtendo token de aplicação: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.mercadopago.com/merchant_orders/"+merchantOrderID, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+tokenApp)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("buscando merchant_order %s: %w", merchantOrderID, err)
+	}
+	defer resp.Body.Close()
+
+	var order struct {
+		ExternalReference string `json:"external_reference"`
+		Payments          []struct {
+			ID     int64  `json:"id"`
+			Status string `json:"status"`
+		} `json:"payments"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&order); err != nil {
+		return fmt.Errorf("lendo dados da merchant_order %s: %w", merchantOrderID, err)
+	}
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("Mercado Pago recusou consulta da merchant_order %s (status %d)", merchantOrderID, resp.StatusCode)
+	}
+
+	log.Printf("merchant_order %s: external_reference=%q, %d pagamento(s) associado(s)", merchantOrderID, order.ExternalReference, len(order.Payments))
+
+	if len(order.Payments) == 0 {
+		return nil // preferência ainda sem nenhuma tentativa de pagamento — nada a fazer
+	}
+
+	var ultimoErro error
+	for _, p := range order.Payments {
+		paymentID := strconv.FormatInt(p.ID, 10)
+		if err := s.ProcessarNotificacaoPagamento(ctx, paymentID); err != nil {
+			log.Printf("erro processando pagamento %s (via merchant_order %s): %v", paymentID, merchantOrderID, err)
+			ultimoErro = err
+		}
+	}
+	return ultimoErro
+}
+
 func (s *MercadoPagoService) ProcessarNotificacaoPagamento(ctx context.Context, paymentID string) error {
 	tokenApp, err := s.obterTokenAplicacao(ctx)
 	if err != nil {

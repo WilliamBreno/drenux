@@ -106,17 +106,23 @@ func (h *MercadoPagoHandler) Checkout(c *gin.Context) {
 }
 
 // Webhook atende POST /webhooks/mercadopago — chamado pelo próprio
-// Mercado Pago. O ID do pagamento vem via query string (?data.id=... ou
+// Mercado Pago. O ID do recurso vem via query string (?data.id=... ou
 // ?id=..., dependendo do formato da notificação — v1 "topic/id" e v2
 // "type/data.id" convivem na API do Mercado Pago).
+//
+// IMPORTANTE (achado em teste real em 24/07/2026): pra essa integração
+// (Checkout Pro via preferência), o Mercado Pago manda majoritariamente
+// notificações "topic=merchant_order" — não "type=payment". Uma
+// merchant_order não é o pagamento em si, é o "pedido" que agrupa uma ou
+// mais tentativas de pagamento; o(s) ID(s) de pagamento de verdade vêm
+// dentro da resposta de GET /merchant_orders/:id (ver
+// MercadoPagoService.ProcessarMerchantOrder). Ignorar "merchant_order"
+// (como o código fazia antes) significava nunca processar pagamento
+// nenhum de verdade — não é opcional tratar os dois tipos.
 func (h *MercadoPagoHandler) Webhook(c *gin.Context) {
 	tipo := c.Query("type")
 	if tipo == "" {
 		tipo = c.Query("topic")
-	}
-	if tipo != "" && tipo != "payment" {
-		c.JSON(http.StatusOK, gin.H{"received": true}) // outros tipos de evento não nos interessam ainda
-		return
 	}
 
 	dataID := c.Query("data.id")
@@ -124,28 +130,40 @@ func (h *MercadoPagoHandler) Webhook(c *gin.Context) {
 		dataID = c.Query("id")
 	}
 	if dataID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "notificação sem id de pagamento"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "notificação sem id"})
 		return
 	}
 
-	log.Printf("webhook Mercado Pago recebido — type=%q payment_id=%s", tipo, dataID)
+	log.Printf("webhook Mercado Pago recebido — type/topic=%q id=%s", tipo, dataID)
+
+	if tipo != "payment" && tipo != "merchant_order" {
+		log.Printf("webhook Mercado Pago ignorado — type/topic=%q ainda não tratado (id=%s)", tipo, dataID)
+		c.JSON(http.StatusOK, gin.H{"received": true})
+		return
+	}
 
 	signature := c.GetHeader("x-signature")
 	requestID := c.GetHeader("x-request-id")
 	if err := h.mercadoPagoService.ValidarAssinaturaWebhook(signature, requestID, dataID); err != nil {
-		log.Printf("erro validando assinatura do webhook Mercado Pago (payment_id=%s): %v", dataID, err)
+		log.Printf("erro validando assinatura do webhook Mercado Pago (id=%s): %v", dataID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "notificação inválida"})
 		return
 	}
-	log.Printf("assinatura do webhook Mercado Pago validada (payment_id=%s)", dataID)
+	log.Printf("assinatura do webhook Mercado Pago validada (id=%s)", dataID)
 
-	if err := h.mercadoPagoService.ProcessarNotificacaoPagamento(c.Request.Context(), dataID); err != nil {
-		log.Printf("erro processando notificação de pagamento %s do Mercado Pago: %v", dataID, err)
+	var err error
+	if tipo == "merchant_order" {
+		err = h.mercadoPagoService.ProcessarMerchantOrder(c.Request.Context(), dataID)
+	} else {
+		err = h.mercadoPagoService.ProcessarNotificacaoPagamento(c.Request.Context(), dataID)
+	}
+	if err != nil {
+		log.Printf("erro processando notificação %s (id=%s) do Mercado Pago: %v", tipo, dataID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "não foi possível processar a notificação"})
 		return
 	}
 
-	log.Printf("notificação de pagamento %s do Mercado Pago processada com sucesso", dataID)
+	log.Printf("notificação %s (id=%s) do Mercado Pago processada com sucesso", tipo, dataID)
 	c.JSON(http.StatusOK, gin.H{"received": true})
 }
 

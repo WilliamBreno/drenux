@@ -271,6 +271,21 @@ a mais do que o pedido realmente vale. Não toquei nisso porque não foi pedido 
 teste (sem cupom), mas fica registrado — precisa de uma correção própria antes de qualquer loja
 usar cupom com Mercado Pago de verdade.
 
+**Correção 4 (24/07/2026), a mais importante das quatro — achada em teste real de ponta a ponta**:
+o webhook só processava notificações `type=payment`. Só que, na prática, testando com a Loja
+conectada de verdade, o Mercado Pago mandou só notificações `topic=merchant_order` pros dois
+pagamentos de teste (um deles recusado pelo próprio Mercado Pago com a mensagem genérica "não foi
+possível processar seu pagamento" — recusa do lado do Mercado Pago/banco, não bug nosso). Como o
+código ignorava qualquer coisa que não fosse `type=payment`, **nenhum pagamento seria processado
+de verdade nessa integração**, aprovado ou não — o webhook devolvia 200 sem fazer nada.
+`MercadoPagoHandler.Webhook` agora trata os dois tipos: `merchant_order` busca
+`GET /merchant_orders/:id`, pega o(s) pagamento(s) associados, e delega cada um pro mesmo
+`ProcessarNotificacaoPagamento` de sempre (que já é idempotente). Ainda não confirmamos com um
+pagamento **aprovado** de verdade que o fluxo completa (desconto de estoque, WhatsApp, `pedido`
+marcado como pago) — só que a notificação agora chega até o processamento em vez de ser
+descartada na porta. Validado com `go build`/`go vet`/`gofmt`, ainda precisa de um teste aprovado
+de ponta a ponta pra fechar a Fase 5 de vez.
+
 **Ressalvas importantes antes de ir pra produção:**
 1. **Nada disso foi testado contra a API real do Mercado Pago** — não há credenciais de sandbox
    nesse ambiente. Antes de confiar: criar a aplicação "drenux-marketplace" no Mercado Pago
