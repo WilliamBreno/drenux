@@ -344,7 +344,21 @@ func (s *MercadoPagoService) CriarCheckout(ctx context.Context, pedidoID uint) (
 		return "", err
 	}
 
-	initPoint, _ := preference["init_point"].(string)
+	// O Access Token devolvido pelo OAuth já indica o ambiente pelo prefixo
+	// ("TEST-..." pra Seller Test User, "APP_USR-..." pra conta de
+	// produção) — se a loja estiver conectada com uma conta de teste,
+	// precisamos do sandbox_init_point, não do init_point de produção. Os
+	// dois ambientes não se misturam: vendedor de produção com link de
+	// sandbox falha, e vendedor de teste com link de produção é bloqueado
+	// pelo próprio Mercado Pago ("uma das partes é de teste"). Não dá pra
+	// remover essa checagem achando redundante — os dois campos vêm
+	// preenchidos na mesma resposta e o Mercado Pago não escolhe por nós.
+	campoLink := "init_point"
+	if strings.HasPrefix(loja.MercadoPagoAccessToken, "TEST-") {
+		campoLink = "sandbox_init_point"
+	}
+
+	initPoint, _ := preference[campoLink].(string)
 	if initPoint == "" {
 		return "", errors.New("Mercado Pago não devolveu o link de pagamento")
 	}
