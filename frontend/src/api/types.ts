@@ -212,6 +212,7 @@ export interface SolicitacaoEntrega {
   tipo_calculo: string;
   peso_total_gramas: number;
   valor_frete: number;
+  peso_pendente: boolean;
   status: StatusSolicitacao;
   itens: ItemPedido[];
   status_entrega: string;
@@ -249,6 +250,7 @@ export interface Pedido {
   endereco_entrega: string;
   cupom_codigo: string;
   desconto: number;
+  peso_pendente: boolean;
   itens: ItemPedido[];
   created_at: string;
   updated_at: string;

@@ -88,18 +88,16 @@ export function ProdutoFormFields({ form, onChange, categorias, subcategorias, g
           </select>
         </Campo>
         {form.tipo_produto === 'mercadoria' && (
-          <Campo label="Peso (g)" className="flex-1">
-            {/* Sem `required`: o campo fica opcional enquanto o lojista
-                preenche o formulário — a checagem (obrigatório pra
-                mercadoria) só acontece no envio, via validação em JS, pra
-                mostrar a mensagem amigável em vez do aviso nativo do
-                navegador. */}
+          <Campo label="Peso (g) — opcional" className="flex-1">
             <input type="number" min="1" value={form.peso_gramas ?? ''} onChange={(e) => onChange({ ...form, peso_gramas: e.target.value === '' ? null : parseInt(e.target.value) })} placeholder="Ex: 300" className="w-full rounded-lg border border-tinta/20 bg-fundo px-3 py-2 text-tinta outline-none focus:border-acento" />
           </Campo>
         )}
       </div>
       {form.tipo_produto === 'mercadoria' && (
-        <p className="text-xs text-tinta-suave">Produtos "Mercadoria" podem ser guardados pelo cliente e entregues depois (se a loja tiver essa opção ativada em Configurações). Alimentícios nunca podem, por segurança.</p>
+        <p className="text-xs text-tinta-suave">
+          Produtos "Mercadoria" podem ser guardados pelo cliente e entregues depois (se a loja tiver essa opção ativada em Configurações). Alimentícios nunca podem, por segurança.
+          {' '}O peso não é obrigatório, mas só é usado pra calcular o frete quando a entrega for pra fora da sua região — sem ele, um pedido assim fica marcado como "peso pendente" até você completar.
+        </p>
       )}
 
       {/* Upload de foto */}

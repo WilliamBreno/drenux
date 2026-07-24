@@ -8,6 +8,8 @@ const statusEntregaInfo: Record<string, { label: string; classe: string }> = {
   entregue: { label: '✅ Entregue', classe: 'bg-emerald-100 text-emerald-700' },
 };
 
+const PESO_PENDENTE_CLASSE = 'bg-amber-100 text-amber-800';
+
 function formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -21,6 +23,8 @@ export function Solicitacoes() {
     refetchInterval: 30_000,
   });
 
+  const pesoPendenteCount = solicitacoes?.filter((s) => s.peso_pendente).length ?? 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,6 +33,12 @@ export function Solicitacoes() {
           Pedidos de entrega de itens que já foram pagos e ficaram guardados. O frete já está pago quando aparecem aqui.
         </p>
       </div>
+
+      {pesoPendenteCount > 0 && (
+        <div className={`rounded-xl px-4 py-2 text-sm font-medium ${PESO_PENDENTE_CLASSE}`}>
+          ⚠️ {pesoPendenteCount} entrega{pesoPendenteCount > 1 ? 's' : ''} com peso pendente — o frete pode estar sub-cobrado.
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-tinta-suave">Carregando...</p>
@@ -58,11 +68,18 @@ function SolicitacaoCard({ solicitacao }: { solicitacao: SolicitacaoEntrega }) {
           </p>
           <p className="text-sm text-tinta-suave">{solicitacao.cliente_telefone}</p>
         </div>
-        {statusEntrega && (
-          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusEntrega.classe}`}>
-            {statusEntrega.label}
-          </span>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {statusEntrega && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusEntrega.classe}`}>
+              {statusEntrega.label}
+            </span>
+          )}
+          {solicitacao.peso_pendente && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${PESO_PENDENTE_CLASSE}`}>
+              ⚠️ Peso pendente
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 space-y-1 border-t border-tinta/10 pt-3">

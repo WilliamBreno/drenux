@@ -38,6 +38,14 @@ type Pedido struct {
 	ModoEntrega     ModoEntrega `gorm:"size:20;default:'retirada'" json:"modo_entrega"`
 	EnderecoEntrega string      `gorm:"size:300" json:"endereco_entrega"`
 
+	// PesoPendente é um aviso preventivo: true quando o pedido é modo
+	// "guardar" e tem item mercadoria sem peso cadastrado — não trava a
+	// compra, só sinaliza pro lojista que vai precisar completar o peso
+	// antes de uma entrega interestadual de verdade (ver
+	// SolicitacaoEntrega.PesoPendente, que é o aviso definitivo, calculado
+	// só quando o frete realmente precisar do peso e ele faltar).
+	PesoPendente bool `gorm:"default:false" json:"peso_pendente"`
+
 	// Cupom aplicado — snapshot do código no momento do pedido.
 	// Guardamos o código (não o ID) porque se o cupom for deletado depois,
 	// o histórico do pedido ainda faz sentido.

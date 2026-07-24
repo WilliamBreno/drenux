@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/WilliamBreno/cardapio-backend/internal/domain"
@@ -42,6 +43,8 @@ func NewPosPagamentoService(db *gorm.DB, notificationSender notification.Notific
 // Não devolve erro — é sempre chamado a partir de uma goroutine própria
 // do processador de pagamento, então falha aqui só é logada.
 func (s *PosPagamentoService) ProcessarPedidoPago(pedidoID uint) {
+	log.Printf("pós-pagamento do pedido %d: iniciando (estoque + notificação)", pedidoID)
+
 	pedido, err := s.pedidoRepo.BuscarPorID(pedidoID)
 	if err != nil {
 		log.Printf("não foi possível recarregar pedido %d pós-pagamento: %v", pedidoID, err)
@@ -107,6 +110,21 @@ func (s *PosPagamentoService) ProcessarPedidoPago(pedidoID uint) {
 	}
 
 	s.notificarPagamento(pedido, loja.Nome, loja.WhatsappNumero)
+
+	if pedido.PesoPendente && s.notificationSender != nil && loja.WhatsappNumero != "" {
+		nomes := nomesItensSemPeso(pedido.Itens)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		aviso := fmt.Sprintf(
+			"⚠️ Peso pendente — %s\n\nO pedido #%d (guardar e entregar depois) tem produto(s) sem peso cadastrado: %s.\n\nCadastre o peso desses produtos antes de uma entrega fora da sua região — sem isso o frete estimado pode sair errado.",
+			loja.Nome, pedido.ID, strings.Join(nomes, ", "),
+		)
+		if err := s.notificationSender.EnviarTextoAdmin(ctx, loja.WhatsappNumero, aviso); err != nil {
+			log.Printf("falha ao enviar aviso de peso pendente do pedido %d: %v", pedido.ID, err)
+		}
+		cancel()
+	}
+
+	log.Printf("pós-pagamento do pedido %d: concluído", pedidoID)
 }
 
 func (s *PosPagamentoService) notificarPagamento(pedido *domain.Pedido, lojaNome, whatsappNumero string) {
@@ -114,6 +132,7 @@ func (s *PosPagamentoService) notificarPagamento(pedido *domain.Pedido, lojaNome
 		log.Printf("WhatsApp não conectado — pedido %d foi pago mas a notificação foi pulada", pedido.ID)
 		return
 	}
+	log.Printf("pedido %d: disparando notificação WhatsApp pro cliente e pro dono da loja", pedido.ID)
 
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

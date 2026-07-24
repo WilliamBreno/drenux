@@ -108,7 +108,6 @@ export function Produtos() {
   function salvar(e: FormEvent) {
     e.preventDefault();
     if (!form.nome.trim() || form.preco <= 0 || !form.categoria_id) { setErro('Preenche nome, preço e categoria.'); return; }
-    if (form.tipo_produto === 'mercadoria' && (!form.peso_gramas || form.peso_gramas <= 0)) { setErro('Produtos do tipo Mercadoria precisam de um peso (em gramas).'); return; }
     setErro(null);
     if (editandoId) { mutAtualizar.mutate({ id: editandoId, input: form }); }
     else { mutCriar.mutate(form); }

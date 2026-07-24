@@ -96,10 +96,12 @@ func (h *MercadoPagoHandler) Checkout(c *gin.Context) {
 
 	url, err := h.mercadoPagoService.CriarCheckout(c.Request.Context(), params.ID)
 	if err != nil {
+		log.Printf("erro criando checkout Mercado Pago do pedido %d: %v", params.ID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
+	log.Printf("checkout Mercado Pago criado pro pedido %d: %s", params.ID, url)
 	c.JSON(http.StatusOK, gin.H{"url": url})
 }
 
@@ -126,13 +128,16 @@ func (h *MercadoPagoHandler) Webhook(c *gin.Context) {
 		return
 	}
 
+	log.Printf("webhook Mercado Pago recebido — type=%q payment_id=%s", tipo, dataID)
+
 	signature := c.GetHeader("x-signature")
 	requestID := c.GetHeader("x-request-id")
 	if err := h.mercadoPagoService.ValidarAssinaturaWebhook(signature, requestID, dataID); err != nil {
-		log.Printf("erro validando assinatura do webhook Mercado Pago: %v", err)
+		log.Printf("erro validando assinatura do webhook Mercado Pago (payment_id=%s): %v", dataID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "notificação inválida"})
 		return
 	}
+	log.Printf("assinatura do webhook Mercado Pago validada (payment_id=%s)", dataID)
 
 	if err := h.mercadoPagoService.ProcessarNotificacaoPagamento(c.Request.Context(), dataID); err != nil {
 		log.Printf("erro processando notificação de pagamento %s do Mercado Pago: %v", dataID, err)
@@ -140,6 +145,7 @@ func (h *MercadoPagoHandler) Webhook(c *gin.Context) {
 		return
 	}
 
+	log.Printf("notificação de pagamento %s do Mercado Pago processada com sucesso", dataID)
 	c.JSON(http.StatusOK, gin.H{"received": true})
 }
 

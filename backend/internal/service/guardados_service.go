@@ -157,6 +157,11 @@ func (s *GuardadosService) SolicitarEntrega(slug string, input SolicitarEntregaI
 			tipoCalculo = "regional"
 		}
 
+		// Peso só importa de verdade quando o frete saiu da fórmula
+		// estimada (fora da região) — na fórmula regional (por km) o peso
+		// nunca é usado, então não faz sentido marcar como pendente.
+		pesoPendente := !cotacao.MesmaRegiao && pesoPendenteEmItens(itens)
+
 		solicitacao = domain.SolicitacaoEntrega{
 			LojaID:          loja.ID,
 			ClienteNome:     input.ClienteNome,
@@ -166,6 +171,7 @@ func (s *GuardadosService) SolicitarEntrega(slug string, input SolicitarEntregaI
 			TipoCalculo:     tipoCalculo,
 			PesoTotalGramas: pesoTotal,
 			ValorFrete:      cotacao.ValorFrete,
+			PesoPendente:    pesoPendente,
 			Status:          domain.StatusSolicitacaoAguardandoPagamento,
 		}
 		if err := solicitacaoRepo.Criar(&solicitacao); err != nil {

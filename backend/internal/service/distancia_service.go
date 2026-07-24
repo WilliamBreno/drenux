@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/WilliamBreno/cardapio-backend/internal/domain"
 )
 
 // DistanciaService cuida de duas coisas: transformar um endereço em texto
@@ -227,4 +229,32 @@ func CalcularFreteEstimadoCorreios(pesoGramas int, distanciaKm float64) float64 
 		total = freteCorreiosMinimo
 	}
 	return total
+}
+
+// pesoPendenteEmItens diz se algum item mercadoria da lista está sem peso
+// cadastrado — usado tanto pelo aviso preventivo do Pedido (modo
+// "guardar") quanto pelo aviso definitivo da SolicitacaoEntrega, pra não
+// duplicar esse critério em dois lugares.
+func pesoPendenteEmItens(itens []domain.ItemPedido) bool {
+	for _, item := range itens {
+		if item.TipoProduto == domain.TipoProdutoMercadoria && item.PesoGramas <= 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// nomesItensSemPeso lista os produtos (por nome, sem repetir) que estão
+// sem peso cadastrado — usado pra deixar claro, no aviso de WhatsApp,
+// exatamente qual produto o lojista precisa completar.
+func nomesItensSemPeso(itens []domain.ItemPedido) []string {
+	vistos := make(map[string]bool)
+	var nomes []string
+	for _, item := range itens {
+		if item.TipoProduto == domain.TipoProdutoMercadoria && item.PesoGramas <= 0 && !vistos[item.ProdutoNome] {
+			vistos[item.ProdutoNome] = true
+			nomes = append(nomes, item.ProdutoNome)
+		}
+	}
+	return nomes
 }

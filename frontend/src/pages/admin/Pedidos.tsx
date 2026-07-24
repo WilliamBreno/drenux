@@ -15,7 +15,11 @@ const statusEntregaInfo: Record<string, { label: string; classe: string }> = {
   entregue: { label: '✅ Entregue', classe: 'bg-emerald-100 text-emerald-700' },
 };
 
-const filtros: { valor: 'todos' | StatusPedido; label: string }[] = [
+const PESO_PENDENTE_CLASSE = 'bg-amber-100 text-amber-800';
+
+type FiltroPedido = 'todos' | StatusPedido | 'peso_pendente';
+
+const filtrosBase: { valor: FiltroPedido; label: string }[] = [
   { valor: 'todos', label: 'Todos' },
   { valor: 'pago', label: 'Pagos' },
   { valor: 'aguardando_pagamento', label: 'Aguardando' },
@@ -41,10 +45,22 @@ export function Pedidos() {
     refetchInterval: 30_000,
   });
 
-  const [filtro, setFiltro] = useState<'todos' | StatusPedido>('todos');
+  const [filtro, setFiltro] = useState<FiltroPedido>('todos');
+
+  const pesoPendenteCount = pedidos?.filter((p) => p.peso_pendente).length ?? 0;
+
+  // O filtro de peso pendente só aparece quando há algum — evita poluir a
+  // barra pra lojas que nunca usam o modo "guardar e entregar depois".
+  const filtros = pesoPendenteCount > 0
+    ? [...filtrosBase, { valor: 'peso_pendente' as const, label: `⚠️ Peso pendente (${pesoPendenteCount})` }]
+    : filtrosBase;
 
   const pedidosFiltrados =
-    pedidos?.filter((pedido) => filtro === 'todos' || pedido.status === filtro) ?? [];
+    pedidos?.filter((pedido) => {
+      if (filtro === 'todos') return true;
+      if (filtro === 'peso_pendente') return pedido.peso_pendente;
+      return pedido.status === filtro;
+    }) ?? [];
 
   return (
     <div className="space-y-6">
@@ -58,6 +74,8 @@ export function Pedidos() {
             className={`shrink-0 rounded-full border-2 px-4 py-1.5 text-sm font-medium transition ${
               filtro === item.valor
                 ? 'border-acento bg-acento text-superficie'
+                : item.valor === 'peso_pendente'
+                ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400'
                 : 'border-tinta/15 bg-superficie text-tinta-suave hover:border-tinta/30'
             }`}
           >
@@ -108,6 +126,11 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
           {statusEntrega && (
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusEntrega.classe}`}>
               {statusEntrega.label}
+            </span>
+          )}
+          {pedido.peso_pendente && (
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${PESO_PENDENTE_CLASSE}`}>
+              ⚠️ Peso pendente
             </span>
           )}
         </div>

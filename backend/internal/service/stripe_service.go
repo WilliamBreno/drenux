@@ -742,6 +742,23 @@ func (s *StripeService) notificarFretePago(solicitacaoID uint) {
 	if err := s.notificationSender.EnviarTextoAdmin(ctx, loja.WhatsappNumero, texto); err != nil {
 		log.Printf("falha ao notificar admin do frete pago (solicitação %d): %v", solicitacaoID, err)
 	}
+
+	// Reforço — a solicitação já fica marcada com PesoPendente (visível na
+	// lista do admin), mas manda mais essa mensagem separada pra não
+	// depender só do lojista abrir a tela pra perceber que o frete
+	// cobrado pode estar errado.
+	if solicitacao.PesoPendente {
+		ctxAviso, cancelAviso := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancelAviso()
+		nomes := nomesItensSemPeso(solicitacao.Itens)
+		aviso := fmt.Sprintf(
+			"⚠️ Peso pendente — %s\n\nA entrega #%d de %s ficou fora da sua região e foi cobrada com o frete estimado, mas tem produto(s) sem peso cadastrado: %s.\n\nEsse frete pode estar sub-cobrado — confere e ajusta manualmente se precisar, e já aproveita pra cadastrar o peso desses produtos.",
+			loja.Nome, solicitacao.ID, solicitacao.ClienteNome, strings.Join(nomes, ", "),
+		)
+		if err := s.notificationSender.EnviarTextoAdmin(ctxAviso, loja.WhatsappNumero, aviso); err != nil {
+			log.Printf("falha ao enviar aviso de peso pendente da solicitação %d: %v", solicitacaoID, err)
+		}
+	}
 }
 
 func (s *StripeService) processarPosPagamento(pedidoID uint) {

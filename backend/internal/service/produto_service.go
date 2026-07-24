@@ -146,10 +146,15 @@ func (s *ProdutoService) buscarDaLoja(lojaID, produtoID uint) (*domain.Produto, 
 	return produto, nil
 }
 
-// validarTipoEPeso garante que produtos "mercadoria" (elegíveis pro fluxo
-// de guardar e entregar depois) sempre tenham um peso definido — sem isso
-// não dá pra estimar frete quando o destino fica fora da região da loja.
-// Produtos alimentícios não usam peso, então o valor recebido é ignorado.
+// validarTipoEPeso valida o tipo do produto e normaliza o peso. Peso NÃO é
+// mais obrigatório pra "mercadoria" — só é usado, se existir, pra estimar
+// o frete quando o destino de uma entrega de itens guardados fica fora da
+// região da loja (ver GuardadosService.calcularFrete). Um produto
+// mercadoria sem peso continua sendo cadastrado normalmente; a Solicitação
+// de entrega correspondente é que fica marcada como "peso pendente" na
+// hora em que o frete interestadual precisar desse dado e ele não
+// existir (ver domain.SolicitacaoEntrega.PesoPendente). Produtos
+// alimentícios não usam peso, então o valor recebido é ignorado.
 func validarTipoEPeso(tipo domain.TipoProduto, pesoGramas *int) (domain.TipoProduto, *int, error) {
 	if tipo == "" {
 		tipo = domain.TipoProdutoAlimenticio
@@ -160,8 +165,8 @@ func validarTipoEPeso(tipo domain.TipoProduto, pesoGramas *int) (domain.TipoProd
 	if tipo == domain.TipoProdutoAlimenticio {
 		return tipo, nil, nil
 	}
-	if pesoGramas == nil || *pesoGramas <= 0 {
-		return "", nil, errors.New("produtos do tipo mercadoria exigem um peso (em gramas) maior que zero")
+	if pesoGramas != nil && *pesoGramas <= 0 {
+		pesoGramas = nil
 	}
 	return tipo, pesoGramas, nil
 }

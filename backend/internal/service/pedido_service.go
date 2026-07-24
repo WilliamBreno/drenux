@@ -270,6 +270,14 @@ func (s *PedidoService) CriarPorSlug(slug string, input PedidoInput) (*domain.Pe
 
 		pedido.Itens = itens
 
+		// Aviso preventivo: só faz sentido em modo "guardar" — é o único
+		// modo em que a entrega pode acabar fora da região da loja depois
+		// (ver SolicitacaoEntrega.PesoPendente, o aviso definitivo). Não
+		// bloqueia o pedido, só sinaliza pro lojista completar o peso.
+		if modoEntrega == domain.ModoEntregaGuardar {
+			pedido.PesoPendente = pesoPendenteEmItens(itens)
+		}
+
 		if err := pedidoRepo.Criar(&pedido); err != nil {
 			return fmt.Errorf("criando pedido: %w", err)
 		}

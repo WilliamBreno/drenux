@@ -32,6 +32,13 @@ type SolicitacaoEntrega struct {
 	PesoTotalGramas int     `gorm:"default:0" json:"peso_total_gramas"`
 	ValorFrete      float64 `gorm:"not null" json:"valor_frete"`
 
+	// PesoPendente é true quando essa entrega ficou fora da região da loja
+	// (TipoCalculo == "correios_estimado") e pelo menos um item mercadoria
+	// não tinha peso cadastrado — o frete foi calculado mesmo assim
+	// (tratando o peso ausente como zero), então o valor pode estar
+	// incorreto. Fica marcado até o lojista resolver.
+	PesoPendente bool `gorm:"default:false" json:"peso_pendente"`
+
 	Status          StatusSolicitacao `gorm:"size:30;not null;default:aguardando_pagamento" json:"status"`
 	StripeSessionID string            `gorm:"size:255" json:"-"`
 

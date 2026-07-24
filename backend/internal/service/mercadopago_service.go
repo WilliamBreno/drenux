@@ -235,23 +235,8 @@ func (s *MercadoPagoService) trocarToken(ctx context.Context, extra map[string]s
 	}
 	defer resp.Body.Close()
 
-	corpoResposta, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("lendo corpo da resposta do Mercado Pago: %w", err)
-	}
-
-	// TODO REMOVER: log temporário pra investigar se a resposta do
-	// /oauth/token traz "live_mode" — suspeita é que o Access Token vem
-	// sempre "APP_USR-..." mesmo pra Seller Test User (o prefixo sozinho
-	// não basta pra saber se é conta de teste), e "live_mode" seria o
-	// campo confiável pra decidir entre init_point/sandbox_init_point no
-	// CriarCheckout. Remover assim que confirmarmos o campo — o corpo
-	// inclui access_token/refresh_token em texto puro, não é pra ficar
-	// logando isso de forma permanente.
-	log.Printf("DEBUG TEMP — resposta crua do Mercado Pago em /oauth/token: %s", corpoResposta)
-
 	var tok tokenResponse
-	if err := json.Unmarshal(corpoResposta, &tok); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
 		return nil, fmt.Errorf("lendo resposta do Mercado Pago: %w", err)
 	}
 
@@ -369,9 +354,12 @@ func (s *MercadoPagoService) CriarCheckout(ctx context.Context, pedidoID uint) (
 	// remover essa checagem achando redundante — os dois campos vêm
 	// preenchidos na mesma resposta e o Mercado Pago não escolhe por nós.
 	campoLink := "init_point"
+	ambiente := "produção"
 	if strings.HasPrefix(loja.MercadoPagoAccessToken, "TEST-") {
 		campoLink = "sandbox_init_point"
+		ambiente = "sandbox"
 	}
+	log.Printf("pedido %d: preferência Mercado Pago criada (ambiente=%s, marketplace_fee=%.2f)", pedido.ID, ambiente, marketplaceFee)
 
 	initPoint, _ := preference[campoLink].(string)
 	if initPoint == "" {
@@ -518,6 +506,8 @@ func (s *MercadoPagoService) ProcessarNotificacaoPagamento(ctx context.Context, 
 		return fmt.Errorf("Mercado Pago recusou consulta do pagamento %s (status %d)", paymentID, resp.StatusCode)
 	}
 
+	log.Printf("pagamento %s: status=%q external_reference=%q collector_id=%d", paymentID, pagamento.Status, pagamento.ExternalReference, pagamento.CollectorID)
+
 	if pagamento.Status != "approved" {
 		return nil // ainda não aprovado (pending, rejected, etc.) — nada a fazer agora
 	}
@@ -548,17 +538,20 @@ func (s *MercadoPagoService) ProcessarNotificacaoPagamento(ctx context.Context, 
 	}
 
 	if pedido.Status == domain.StatusPago {
+		log.Printf("pedido %d já estava marcado como pago — notificação repetida do Mercado Pago, ignorando", pedidoID)
 		return nil // já processado — webhook pode repetir a mesma notificação
 	}
 
 	if err := s.pedidoRepo.AtualizarStatus(uint(pedidoID), domain.StatusPago); err != nil {
 		return fmt.Errorf("atualizando status do pedido %d: %w", pedidoID, err)
 	}
+	log.Printf("pedido %d marcado como pago via Mercado Pago (payment_id=%s)", pedidoID, paymentID)
 
 	if loja.AfiliadoID != nil {
 		log.Printf("aviso: pedido %d pago via Mercado Pago tem afiliado vinculado à loja %d, mas repasse automático de comissão ainda não existe pra esse processador (Fase 5.5 em aberto no roadmap) — repassar manualmente", pedidoID, loja.ID)
 	}
 
+	log.Printf("pedido %d: disparando pós-pagamento (estoque + notificação)", pedidoID)
 	go s.posPagamento.ProcessarPedidoPago(uint(pedidoID))
 
 	return nil
