@@ -235,8 +235,23 @@ func (s *MercadoPagoService) trocarToken(ctx context.Context, extra map[string]s
 	}
 	defer resp.Body.Close()
 
+	corpoResposta, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("lendo corpo da resposta do Mercado Pago: %w", err)
+	}
+
+	// TODO REMOVER: log temporário pra investigar se a resposta do
+	// /oauth/token traz "live_mode" — suspeita é que o Access Token vem
+	// sempre "APP_USR-..." mesmo pra Seller Test User (o prefixo sozinho
+	// não basta pra saber se é conta de teste), e "live_mode" seria o
+	// campo confiável pra decidir entre init_point/sandbox_init_point no
+	// CriarCheckout. Remover assim que confirmarmos o campo — o corpo
+	// inclui access_token/refresh_token em texto puro, não é pra ficar
+	// logando isso de forma permanente.
+	log.Printf("DEBUG TEMP — resposta crua do Mercado Pago em /oauth/token: %s", corpoResposta)
+
 	var tok tokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+	if err := json.Unmarshal(corpoResposta, &tok); err != nil {
 		return nil, fmt.Errorf("lendo resposta do Mercado Pago: %w", err)
 	}
 
