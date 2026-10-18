@@ -187,7 +187,16 @@
   to { opacity: 1; transform: none; }
 }
 
+/* Barra da etapa ativa em "Como funciona": enche em 5s e, no fim
+   (animationend), o componente avança pra próxima etapa. */
+@keyframes l-progresso {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.drx-l .l-progresso { width: 0%; animation: l-progresso 5s linear forwards; }
+
 @media (prefers-reduced-motion: reduce) {
+  .drx-l .l-progresso { animation: none; width: 100%; }
   .drx-l .l-respira,
   .drx-l .l-troca { animation: none; }
   .drx-l.l-anima .l-revela { transform: none; transition: opacity 200ms ease; transition-delay: 0ms; }
