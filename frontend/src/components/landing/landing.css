@@ -1,0 +1,236 @@
+/* Landing comercial (rota "/") — direção "capítulos de cor": cada seção é
+   um campo de cor chapado tirado dos temas REAIS do cardápio (themes.ts /
+   index.css), então a própria página demonstra o produto. Tudo fica
+   escopado em .drx-l pra não vazar pro admin nem pro cardápio público. */
+
+.drx-l {
+  --l-preto: #0d0d0d;
+  --l-preto-2: #1c1c1c;
+  --l-papel: #fafafa;
+  --l-tinta: #0a0a0a;
+  --l-ouro: #e8b86d;
+  --l-rosa: #c9184a;
+  --l-marinho-claro: #e8eef4;
+  --l-vinho-claro: #f5e8ec;
+  --l-floresta: #2d6a4f;
+  --l-oceano: #0077b6;
+  --l-oceano-claro: #e4f0f6;
+  --l-amarelo: #f59e0b;
+  --l-hortela: #e0f5f0;
+
+  --l-pequeno: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --l-corpo: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  --l-destaque: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --l-titulo: clamp(2.5rem, 1.2rem + 5.6vw, 6.5rem);
+  --l-gigante: clamp(4rem, 1rem + 12vw, 11rem);
+
+  --l-margem: clamp(20px, 2.4vw, 32px);
+  --l-passo-pasta: 52px;
+
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: var(--l-corpo);
+  line-height: 1.45;
+  letter-spacing: -0.005em;
+  color: var(--l-tinta);
+  background: var(--l-preto);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 768px) {
+  .drx-l { --l-passo-pasta: 64px; }
+}
+
+.drx-l .l-titulo {
+  font-size: var(--l-titulo);
+  font-weight: 500;
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.drx-l .l-gigante {
+  font-size: var(--l-gigante);
+  font-weight: 500;
+  line-height: 0.88;
+  letter-spacing: -0.05em;
+}
+
+.drx-l .l-margem {
+  padding-left: var(--l-margem);
+  padding-right: var(--l-margem);
+}
+
+.drx-l .l-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Botão único da página: retângulo chapado, cantos retos. */
+.drx-l .l-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 56px;
+  padding: 0 1.75rem;
+  font-weight: 500;
+  font-size: var(--l-corpo);
+  background: var(--l-tinta);
+  color: var(--l-papel);
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+.drx-l .l-botao:hover { transform: translateY(-2px); }
+.drx-l .l-botao:active { transform: translateY(1px); }
+.drx-l .l-botao--ouro { background: var(--l-ouro); color: var(--l-tinta); }
+.drx-l .l-botao--ouro:hover { background: #f0c88a; }
+
+.drx-l a:focus-visible,
+.drx-l button:focus-visible,
+.drx-l summary:focus-visible,
+.drx-l input:focus-visible {
+  outline: 3px solid var(--l-ouro);
+  outline-offset: 3px;
+}
+
+.drx-l .l-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: opacity 160ms ease;
+}
+.drx-l .l-link:hover { opacity: 0.7; }
+
+/* ---------- Hero: pilha de pastas ---------- */
+.drx-l .l-pasta {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 86%;
+  bottom: -12px;
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.drx-l .l-pasta:hover { transform: translateX(-50%) translateY(-10px); }
+.drx-l .l-pasta__aba {
+  position: absolute;
+  bottom: 100%;
+  height: 40px;
+  min-width: 180px;
+  padding: 0 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.0625rem;
+  font-weight: 500;
+  clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%);
+  white-space: nowrap;
+}
+.drx-l .l-aba-mob { display: none; }
+@media (max-width: 767px) {
+  .drx-l .l-aba-desk { display: none; }
+  .drx-l .l-aba-mob { display: flex; }
+  .drx-l .l-pasta { width: 100%; }
+  .drx-l .l-pasta:hover { transform: translateX(-50%); }
+  .drx-l .l-pasta__aba { height: 32px; min-width: 132px; padding: 0 22px; font-size: 0.9375rem; }
+}
+
+/* ---------- Slider (como funciona + preços) ---------- */
+/* O trilho visível é um div (.l-trilho + .l-trilho__cheio) atrás do input
+   transparente — dá pra pintar a parte já percorrida com cor chapada, igual
+   em todo navegador. */
+.drx-l .l-faixa { position: relative; height: 40px; display: flex; align-items: center; }
+.drx-l .l-trilho { position: absolute; left: 0; right: 0; height: 8px; background: rgb(0 0 0 / 0.16); pointer-events: none; }
+.drx-l .l-trilho__cheio { height: 100%; background: currentColor; }
+.drx-l .l-range {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.drx-l .l-range::-webkit-slider-runnable-track { height: 8px; background: transparent; }
+.drx-l .l-range::-moz-range-track { height: 8px; background: transparent; }
+.drx-l .l-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 32px;
+  height: 32px;
+  margin-top: -12px;
+  background: var(--l-thumb, var(--l-tinta));
+  border: 0;
+  transition: transform 140ms ease;
+}
+.drx-l .l-range::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: var(--l-thumb, var(--l-tinta));
+}
+.drx-l .l-range:active::-webkit-slider-thumb { transform: scale(1.12); }
+@media (max-width: 767px) {
+  .drx-l .l-faixa,
+  .drx-l .l-range { height: 48px; }
+  .drx-l .l-range::-webkit-slider-thumb { width: 40px; height: 40px; margin-top: -16px; }
+  .drx-l .l-range::-moz-range-thumb { width: 40px; height: 40px; }
+}
+
+/* ---------- Perguntas: <details> como blocos preenchidos ---------- */
+.drx-l .l-pergunta summary { list-style: none; cursor: pointer; }
+.drx-l .l-pergunta summary::-webkit-details-marker { display: none; }
+.drx-l .l-mais { position: relative; width: 16px; height: 16px; flex-shrink: 0; }
+.drx-l .l-mais::before,
+.drx-l .l-mais::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6.5px;
+  width: 16px;
+  height: 3px;
+  background: currentColor;
+  transition: transform 200ms ease;
+}
+.drx-l .l-mais::after { transform: rotate(90deg); }
+.drx-l .l-pergunta[open] .l-mais::after { transform: rotate(0deg); }
+.drx-l .l-pergunta { transition: background-color 200ms ease, color 200ms ease; }
+.drx-l .l-pergunta:not([open]):hover { background: #ccede5; }
+
+/* ---------- Entradas ao rolar ---------- */
+/* Só esconde se o JS marcou a raiz (.l-anima) — sem JS o conteúdo aparece. */
+.drx-l.l-anima .l-revela {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 640ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 640ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: calc(var(--l-ordem, 0) * 80ms);
+}
+.drx-l.l-anima .l-revela.l-visivel {
+  opacity: 1;
+  transform: none;
+}
+
+/* Foto do banner da loja de exemplo respirando devagar (a "imagem que se
+   mexe" da página). */
+@keyframes l-respira {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+.drx-l .l-respira { animation: l-respira 9s ease-in-out infinite alternate; }
+
+.drx-l .l-troca { animation: l-troca 280ms ease both; }
+@keyframes l-troca {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drx-l .l-respira,
+  .drx-l .l-troca { animation: none; }
+  .drx-l.l-anima .l-revela { transform: none; transition: opacity 200ms ease; transition-delay: 0ms; }
+  .drx-l .l-pasta,
+  .drx-l .l-pasta:hover,
+  .drx-l .l-botao:hover { transform: translateX(-50%); }
+  .drx-l .l-botao:hover { transform: none; }
+}
+
+.drx-l .l-rolagem-x { scrollbar-width: none; }
+.drx-l .l-rolagem-x::-webkit-scrollbar { display: none; }
