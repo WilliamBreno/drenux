@@ -1,18 +1,60 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TEMAS } from '../../themes';
 import { LOJAS_EXEMPLO } from './dados';
 import { CardapioFragmento } from './CardapioFragmento';
 
-// Mostruário de temas: a lista de nomes é o índice; apontar (ou tocar)
-// num nome troca a loja de exemplo e a cor do disco atrás dela. É o
-// sistema de temas de verdade (data-tema), não uma ilustração.
+const INTERVALO = 4500;
+const INTERVALO_APOS_TOQUE = 10000;
+
+// Mostruário de temas: a lista de nomes é o índice e troca a loja de
+// exemplo e a cor do disco atrás dela. É o sistema de temas de verdade
+// (data-tema), não uma ilustração.
+// Carrossel: avança sozinho; com o mouse sobre um nome, mostra aquele e
+// pausa até o mouse sair; no toque (celular), mostra o tocado por 10s e
+// depois segue a partir dele. Fora da tela ou com "reduzir movimento",
+// não avança.
 export function Temas() {
   const [ativo, setAtivo] = useState(0);
+  const [mouseEmCima, setMouseEmCima] = useState(false);
+  const [visivel, setVisivel] = useState(false);
+  const [espera, setEspera] = useState({ ms: INTERVALO, toque: 0 });
+  const secao = useRef<HTMLElement>(null);
+  const lista = useRef<HTMLUListElement>(null);
   const loja = LOJAS_EXEMPLO[ativo];
   const tema = TEMAS.find((t) => t.id === loja.tema)!;
 
+  useEffect(() => {
+    const el = secao.current;
+    if (!el || !('IntersectionObserver' in window)) return;
+    const obs = new IntersectionObserver(([e]) => setVisivel(e.isIntersecting), { threshold: 0.3 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // `espera.toque` entra nas dependências pra reiniciar a contagem mesmo
+  // quando o toque é no tema que já estava ativo.
+  useEffect(() => {
+    if (!visivel || mouseEmCima) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = window.setTimeout(() => {
+      setAtivo((n) => (n + 1) % LOJAS_EXEMPLO.length);
+      setEspera((e) => ({ ms: INTERVALO, toque: e.toque }));
+    }, espera.ms);
+    return () => window.clearTimeout(t);
+  }, [ativo, visivel, mouseEmCima, espera]);
+
+  // No celular a lista rola de lado: mantém o nome ativo à vista, rolando
+  // só a lista (scrollIntoView rolaria a página inteira junto).
+  useEffect(() => {
+    const ul = lista.current;
+    const li = ul?.children[ativo] as HTMLElement | undefined;
+    if (!ul || !li || ul.scrollWidth <= ul.clientWidth) return;
+    ul.scrollTo({ left: li.offsetLeft - ul.offsetLeft - 20, behavior: 'smooth' });
+  }, [ativo]);
+
   return (
     <section
+      ref={secao}
       id="temas"
       className="l-margem relative overflow-hidden bg-[var(--l-preto-2)] py-16 text-[var(--l-papel)] md:min-h-[88svh] md:py-20"
     >
@@ -39,6 +81,7 @@ export function Temas() {
             {TEMAS.length} temas de cor
           </h2>
           <ul
+            ref={lista}
             className="l-rolagem-x -mx-[var(--l-margem)] mt-2 flex gap-6 overflow-x-auto px-[var(--l-margem)] md:mx-0 md:block md:overflow-visible md:px-0"
             aria-label="Lojas de exemplo por tema"
           >
@@ -49,7 +92,21 @@ export function Temas() {
                 <li key={l.tema} className="shrink-0">
                   <button
                     type="button"
-                    onMouseEnter={() => setAtivo(i)}
+                    onPointerEnter={(e) => {
+                      if (e.pointerType !== 'mouse') return;
+                      setAtivo(i);
+                      setMouseEmCima(true);
+                    }}
+                    onPointerLeave={(e) => {
+                      if (e.pointerType !== 'mouse') return;
+                      setMouseEmCima(false);
+                      setEspera((x) => ({ ms: INTERVALO, toque: x.toque }));
+                    }}
+                    onPointerUp={(e) => {
+                      if (e.pointerType === 'mouse') return;
+                      setAtivo(i);
+                      setEspera((x) => ({ ms: INTERVALO_APOS_TOQUE, toque: x.toque + 1 }));
+                    }}
                     onFocus={() => setAtivo(i)}
                     onClick={() => setAtivo(i)}
                     aria-pressed={selecionado}
