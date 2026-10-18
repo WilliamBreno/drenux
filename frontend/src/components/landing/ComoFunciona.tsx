@@ -34,8 +34,8 @@ const ETAPAS = [
 ];
 
 // Etapas em abas com barra de progresso: a ativa vai enchendo e, quando
-// termina (fim da animação CSS), avança sozinha pra próxima. Pausa com o
-// mouse em cima da seção e quando ela está fora da tela; clicar numa etapa
+// termina (fim da animação CSS), avança sozinha pra próxima. Pausa só com
+// o mouse em cima de uma das abas e quando a seção está fora da tela; clicar numa etapa
 // pula direto pra ela. Com "reduzir movimento" não avança sozinha.
 export function ComoFunciona() {
   const [etapa, setEtapa] = useState(0);
@@ -59,8 +59,6 @@ export function ComoFunciona() {
       id="como-funciona"
       aria-label="Como funciona"
       className="grid md:min-h-[92svh] md:grid-cols-2"
-      onMouseEnter={() => setMouseEmCima(true)}
-      onMouseLeave={() => setMouseEmCima(false)}
     >
       {/* Texto + etapas */}
       <div className="l-margem order-2 flex flex-col justify-between gap-10 bg-[var(--l-oceano)] pb-12 pt-10 text-[var(--l-papel)] md:order-1 md:py-16">
@@ -90,6 +88,8 @@ export function ComoFunciona() {
                   aria-selected={sel}
                   aria-controls="tela-etapa"
                   onClick={() => setEtapa(i)}
+                  onMouseEnter={() => setMouseEmCima(true)}
+                  onMouseLeave={() => setMouseEmCima(false)}
                   className={`flex flex-col gap-3 p-3.5 text-left transition-colors duration-200 ${
                     sel ? 'bg-white text-[var(--l-tinta)]' : 'bg-white/10 text-[var(--l-papel)] hover:bg-white/20'
                   }`}
