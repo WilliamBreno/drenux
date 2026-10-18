@@ -25,7 +25,6 @@
   --l-gigante: clamp(4rem, 1rem + 12vw, 11rem);
 
   --l-margem: clamp(20px, 2.4vw, 32px);
-  --l-passo-pasta: 52px;
 
   font-family: 'Hanken Grotesk', system-ui, sans-serif;
   font-size: var(--l-corpo);
@@ -34,10 +33,6 @@
   color: var(--l-tinta);
   background: var(--l-preto);
   -webkit-font-smoothing: antialiased;
-}
-
-@media (min-width: 768px) {
-  .drx-l { --l-passo-pasta: 64px; }
 }
 
 .drx-l .l-titulo {
@@ -99,38 +94,8 @@
 }
 .drx-l .l-link:hover { opacity: 0.7; }
 
-/* ---------- Hero: pilha de pastas ---------- */
-.drx-l .l-pasta {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 86%;
-  bottom: -12px;
-  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.drx-l .l-pasta:hover { transform: translateX(-50%) translateY(-10px); }
-.drx-l .l-pasta__aba {
-  position: absolute;
-  bottom: 100%;
-  height: 40px;
-  min-width: 180px;
-  padding: 0 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.0625rem;
-  font-weight: 500;
-  clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%);
-  white-space: nowrap;
-}
-.drx-l .l-aba-mob { display: none; }
-@media (max-width: 767px) {
-  .drx-l .l-aba-desk { display: none; }
-  .drx-l .l-aba-mob { display: flex; }
-  .drx-l .l-pasta { width: 100%; }
-  .drx-l .l-pasta:hover { transform: translateX(-50%); }
-  .drx-l .l-pasta__aba { height: 32px; min-width: 132px; padding: 0 22px; font-size: 0.9375rem; }
-}
+/* Âncoras param abaixo do cabeçalho fixo (marca + abas). */
+.drx-l section[id] { scroll-margin-top: 116px; }
 
 /* ---------- Slider (como funciona + preços) ---------- */
 /* O trilho visível é um div (.l-trilho + .l-trilho__cheio) atrás do input
@@ -226,9 +191,6 @@
   .drx-l .l-respira,
   .drx-l .l-troca { animation: none; }
   .drx-l.l-anima .l-revela { transform: none; transition: opacity 200ms ease; transition-delay: 0ms; }
-  .drx-l .l-pasta,
-  .drx-l .l-pasta:hover,
-  .drx-l .l-botao:hover { transform: translateX(-50%); }
   .drx-l .l-botao:hover { transform: none; }
 }
 

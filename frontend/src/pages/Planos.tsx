@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import '../components/landing/landing.css';
+import { Cabecalho } from '../components/landing/Cabecalho';
 import { Hero } from '../components/landing/Hero';
 import { Vantagens } from '../components/landing/Vantagens';
 import { Temas } from '../components/landing/Temas';
@@ -44,6 +45,7 @@ export function Planos() {
 
   return (
     <div ref={raiz} id="topo" className="drx-l min-h-[100svh]">
+      <Cabecalho />
       <Hero />
       <Vantagens />
       <Temas />

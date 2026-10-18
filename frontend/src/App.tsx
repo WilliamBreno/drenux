@@ -4,6 +4,7 @@ import { EsqueciSenha } from './pages/EsqueciSenha';
 import { RedefinirSenha } from './pages/RedefinirSenha';
 import { Home } from './pages/Home';
 import { Planos } from './pages/Planos';
+import { CreditosImagens } from './pages/CreditosImagens';
 import { CardapioPublico } from './pages/CardapioPublico';
 import { RastrearPedido } from './pages/RastrearPedido';
 import { GerenciarEntrega } from './pages/GerenciarEntrega';
@@ -43,6 +44,7 @@ function App() {
               separado de propósito pra manter cada URL com um papel claro. */}
           <Route path="/" element={<Planos />} />
           <Route path="/inicio" element={<Home />} />
+          <Route path="/creditos-imagens" element={<CreditosImagens />} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />

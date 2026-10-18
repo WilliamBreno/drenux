@@ -1,91 +1,135 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Check, QrCode, MessageCircle, MapPin, Palette } from 'lucide-react';
+import { TEMAS } from '../../themes';
+import { LOJAS_EXEMPLO, brl } from './dados';
+import { CardapioFragmento } from './CardapioFragmento';
 
-// Pilha de pastas: cada pasta é um capítulo da página, com a cor chapada
-// que aquele capítulo vai ter lá embaixo. A pasta da frente "escorre" pra
-// fora da tela e vira o primeiro campo de Vantagens (mesma cor, sem
-// emenda), então o hero já mostra o mapa da página inteira.
-const PASTAS = [
-  { rotulo: 'Perguntas', alvo: '#perguntas', cor: 'var(--l-hortela)', tinta: 'var(--l-tinta)', aba: { desk: '78%', mob: '0%' } },
-  { rotulo: 'Planos', alvo: '#planos', cor: 'var(--l-amarelo)', tinta: 'var(--l-tinta)', aba: { desk: '59%', mob: 'calc(100% - 132px)' } },
-  { rotulo: 'Como funciona', alvo: '#como-funciona', cor: 'var(--l-oceano)', tinta: 'var(--l-papel)', aba: { desk: '40%', mob: 'calc(50% - 66px)' } },
-  { rotulo: 'Temas', alvo: '#temas', cor: 'var(--l-preto-2)', tinta: 'var(--l-papel)', aba: { desk: '21%', mob: '0%' } },
-  { rotulo: 'Vantagens', alvo: '#vantagens', cor: 'var(--l-rosa)', tinta: 'var(--l-papel)', aba: { desk: '2%', mob: 'calc(100% - 132px)' } },
+// Lojas que se revezam na vitrine do hero (uma de cada nicho bem
+// diferente, pra mostrar de cara que o mesmo sistema serve pra todas).
+const VITRINE = ['carvao', 'oceano', 'rosa', 'terracota'].map((t) => LOJAS_EXEMPLO.find((l) => l.tema === t)!);
+
+const FATOS = [
+  { icone: QrCode, texto: 'Link próprio e QR code' },
+  { icone: Check, texto: 'Pix automático' },
+  { icone: MessageCircle, texto: 'Avisos no WhatsApp' },
+  { icone: MapPin, texto: 'Frete por distância' },
+  { icone: Palette, texto: `${TEMAS.length} temas de cor` },
 ];
 
 export function Hero() {
-  return (
-    <section className="relative flex min-h-[100svh] flex-col overflow-hidden bg-[var(--l-preto)] text-[var(--l-papel)]">
-      <nav className="l-margem relative z-10 grid grid-cols-3 items-center pt-6" aria-label="Principal">
-        <a href="#planos" className="l-link hidden justify-self-start text-[15px] md:inline">
-          Planos
-        </a>
-        <Link
-          to="/"
-          className="col-start-2 justify-self-center text-[22px] font-medium tracking-[0.18em] text-[var(--l-ouro)]"
-          aria-label="Drenux, página inicial"
-        >
-          DRENUX
-        </Link>
-        <Link to="/login" className="l-link justify-self-end text-[15px]">
-          Entrar
-        </Link>
-      </nav>
+  const [i, setI] = useState(0);
+  const loja = VITRINE[i];
+  const tema = TEMAS.find((t) => t.id === loja.tema)!;
+  const item = loja.itens[0];
 
-      <div className="l-margem flex flex-col items-center pt-[clamp(56px,9vh,96px)] text-center">
-        <h1 className="l-revela text-[clamp(4.25rem,15vw,10rem)] font-medium leading-[0.9] tracking-[-0.05em] md:text-[clamp(6rem,10.5vw,10rem)]">
-          Venda direto
+  // Troca a loja da vitrine sozinha; quem prefere menos movimento fica na
+  // primeira (e ainda pode trocar tocando nos pontinhos).
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = window.setInterval(() => setI((n) => (n + 1) % VITRINE.length), 4200);
+    return () => window.clearInterval(t);
+  }, []);
+
+  return (
+    <section
+      id="inicio"
+      className="grid bg-[var(--l-preto)] text-[var(--l-papel)] md:min-h-[calc(100svh-116px)] md:grid-cols-2"
+    >
+      {/* Texto */}
+      <div className="l-margem flex flex-col justify-center py-12 md:py-16 md:pr-12">
+        <h1 className="l-revela max-w-[13ch] text-[clamp(2.6rem,10.5vw,6.25rem)] font-medium leading-[0.92] tracking-[-0.045em] md:text-[clamp(3.25rem,6.2vw,6.25rem)]">
+          Venda direto pelo seu cardápio
         </h1>
         <p
-          className="l-revela mt-6 max-w-[46ch] text-[16px] leading-snug text-[var(--l-papel)] md:text-[20px]"
+          className="l-revela mt-6 max-w-[42ch] text-[length:var(--l-destaque)] leading-snug"
           style={{ ['--l-ordem' as string]: 1 }}
         >
-          Cardápio digital e loja online: o cliente pede pelo seu link, paga no Pix e é avisado no WhatsApp. Sem app
-          no meio cobrando comissão.
+          Cardápio digital e catálogo online para restaurantes e lojas. O cliente pede pelo seu link, paga no Pix e
+          é avisado no WhatsApp, sem app no meio cobrando comissão.
         </p>
+        <div
+          className="l-revela mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-7"
+          style={{ ['--l-ordem' as string]: 2 }}
+        >
+          <Link to="/cadastro" className="l-botao l-botao--ouro">
+            Criar loja grátis
+          </Link>
+          <a href="#planos" className="l-link text-[17px]">
+            Ver planos e preços
+          </a>
+        </div>
+        <ul
+          className="l-revela mt-10 flex flex-wrap gap-x-6 gap-y-3 text-[16px] md:mt-14 md:grid md:grid-cols-3"
+          style={{ ['--l-ordem' as string]: 3 }}
+        >
+          {FATOS.map((f) => (
+            <li key={f.texto} className="flex items-center gap-2.5">
+              <f.icone className="h-[18px] w-[18px] shrink-0 text-[var(--l-ouro)]" strokeWidth={2} aria-hidden />
+              {f.texto}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      {/* Pilha. Ocupa o resto da tela; cada pasta desce 64px (52px no
-          celular) em relação à de trás. */}
-      <div className="relative mt-auto h-[46svh] min-h-[330px] md:h-[47svh]">
-        {PASTAS.map((p, i) => {
-          const frente = i === PASTAS.length - 1;
-          return (
-            <div
-              key={p.rotulo}
-              className="l-pasta"
-              style={{
-                top: `calc(40px + ${i} * var(--l-passo-pasta))`,
-                background: p.cor,
-                color: p.tinta,
-              }}
-            >
-              <a
-                href={p.alvo}
-                className="l-pasta__aba l-aba-desk"
-                style={{ left: p.aba.desk, background: p.cor, color: p.tinta }}
-              >
-                {p.rotulo}
-              </a>
-              <a
-                href={p.alvo}
-                className="l-pasta__aba l-aba-mob"
-                style={{ left: p.aba.mob, background: p.cor, color: p.tinta }}
-              >
-                {p.rotulo}
-              </a>
-              {frente && (
-                <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:gap-8 md:p-8">
-                  <Link to="/cadastro" className="l-botao l-botao--ouro w-full md:w-auto">
-                    Criar loja grátis
-                  </Link>
-                  <p className="text-[16px] leading-snug md:text-[17px]">
-                    Grátis pra começar: sem mensalidade, sem cartão, pronto em minutos.
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Vitrine: o cardápio de verdade, em cima de um campo da cor do tema */}
+      <div
+        className="relative flex flex-col items-center justify-center overflow-hidden px-5 pb-12 pt-14 transition-colors duration-500 md:py-14"
+        // Campo um tom abaixo da cor do tema, pra faixa colorida do próprio
+        // cardápio (bg-acento) não se misturar com o fundo.
+        style={{ background: `color-mix(in srgb, ${tema.acento} 62%, #000)` }}
+      >
+        <div className="relative w-full max-w-[350px]">
+          <div key={loja.tema} className="l-troca">
+            <CardapioFragmento loja={loja} />
+          </div>
+
+          {/* Notificação de pedido pago que chega pro dono (texto do
+              template real, notification/templates.go). Flutua de verdade
+              por cima do cardápio, por isso a sombra. */}
+          <div
+            key={`n${loja.tema}`}
+            data-ui
+            className="l-troca absolute -left-3 top-8 w-[250px] rounded-2xl bg-white p-3 text-[#111] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)] sm:-left-24 md:-left-28 lg:-left-36"
+            style={{ animationDelay: '180ms' }}
+          >
+            <p className="flex items-center gap-2 text-[11px] font-semibold text-[#075e54]">
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp · agora
+            </p>
+            <p className="mt-1 text-[13px] font-semibold leading-snug">Novo pedido pago - {loja.nome} - #128</p>
+            <p className="text-[12px] leading-snug text-[#555]">1x {item.nome} · Total {brl(item.preco)}</p>
+          </div>
+
+          <div
+            key={`p${loja.tema}`}
+            data-ui
+            className="l-troca absolute -right-2 bottom-24 flex items-center gap-2 rounded-full bg-[#e3f6ec] px-3.5 py-2 text-[13px] font-semibold text-[#14663d] shadow-[0_14px_30px_-10px_rgba(0,0,0,0.4)] sm:-right-16"
+            style={{ animationDelay: '320ms' }}
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#14663d] text-white">
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </span>
+            Pix aprovado
+          </div>
+        </div>
+
+        <div className="mt-7 flex items-center gap-2" role="group" aria-label="Trocar loja de exemplo">
+          {VITRINE.map((l, n) => (
+            <button
+              key={l.tema}
+              type="button"
+              onClick={() => setI(n)}
+              aria-label={`Ver ${l.nome}`}
+              aria-pressed={n === i}
+              className={`h-2.5 rounded-full transition-all duration-300 ${
+                n === i ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/80'
+              }`}
+            />
+          ))}
+        </div>
+        <p className="mt-3 text-[14px] text-white">
+          {loja.nome} · tema {tema.nome}
+        </p>
       </div>
     </section>
   );

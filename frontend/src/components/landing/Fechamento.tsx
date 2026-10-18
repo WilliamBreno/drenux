@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { CREDITOS_FOTOS } from './dados';
 
 const ATALHOS = [
   { rotulo: 'Vantagens', alvo: '#vantagens' },
@@ -70,21 +69,15 @@ export function Fechamento() {
               </li>
             ))}
           </ul>
-          <p className="col-span-12 text-[14px] leading-relaxed md:col-span-4 md:col-start-9">
-            As lojas da página são exemplos fictícios. Fotos de acervo aberto:{' '}
-            {CREDITOS_FOTOS.map((c, i) => (
-              <span key={c.url}>
-                <a href={c.url} target="_blank" rel="noreferrer" className="l-link">
-                  {c.titulo}
-                </a>
-                , {c.autor} ({c.licenca}){i < CREDITOS_FOTOS.length - 1 ? '; ' : '.'}
-              </span>
-            ))}
-          </p>
         </div>
 
         <div className="mt-20 flex items-center justify-between text-[13px] md:mt-24">
-          <span>© {new Date().getFullYear()} Drenux</span>
+          <span>
+            © {new Date().getFullYear()} Drenux ·{' '}
+            <Link to="/creditos-imagens" className="l-link">
+              Créditos das imagens
+            </Link>
+          </span>
           <a href="#topo" className="l-link">
             Voltar ao topo
           </a>
